@@ -27,7 +27,7 @@ corpus <- lapply(seq_along(docs), function(i) {
   paragrafos <- unlist(strsplit(docs[[i]], "\n")) # Separa o texto em parágrafos
   paragrafos <- paragrafos[nchar(trimws(paragrafos)) > 0] # Tira parágrafos vazios ou só com espaços
   data.frame( # Cria uma tabela com duas colunas:
-    site = titulos[i], # Nome do site/artigo
+    texto = paste0("paragrafo-", seq_along(paragrafos)),
     paragrafo = paragrafos # Cada parágrafo em uma linha
   )
 })
