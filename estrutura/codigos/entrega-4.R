@@ -1,3 +1,5 @@
+# # Importação de bibliotecas e dados
+
 install.packages(c("stopwords", "tidytext", "SnowballC", "stringr","dplyr"))
 
 library(SnowballC)   # Biblioteca para redução palavras ao radical
@@ -36,6 +38,8 @@ corpus <- corpus[, c("texto", setdiff(names(corpus), "texto"))]
 
 corpus
 
+# # Limpeza dos textos
+
 corpus <- corpus |>
   mutate(n_palavras = str_count(paragrafo, "\\S+")) |> # Conta quantas palavras tem em cada parágrafo
   filter(n_palavras >= 10) |>   # Mantém só parágrafos com 10 palavras ou mais
@@ -63,9 +67,14 @@ head(corpus)
 
 write.csv(corpus, "corpus.csv", row.names = FALSE, fileEncoding = "UTF-8")
 
+# # Algoritmo Snowball
+#
+
 wordStem(c("portos", "cargas", "terminais", "importações", "mercadores", "santos", "movimentacao", "transportes", "operacional", "conteineres", "porto"),
          language="portuguese")
 #O SnowballC transforma palavras diferentes, como ‘porto’ e ‘portos’, em uma forma comum para facilitar a busca
+
+# # Tokenizar
 
 tokenizar <- function(texto)
 {
@@ -77,6 +86,8 @@ tokens <- lapply(corpus$paragrafo, tokenizar)
 names(tokens) <- paste0("paragrafo-", 1:nrow(corpus)) #Renomeia o nome de cada parágrafo
 head(tokens)
 
+# #Removendo Stopwords
+
 # Armazenando stopwords do pacote "stopwords" em uma lista
 stopwords <- stopwords("pt", source = "stopwords-iso")
 
@@ -84,6 +95,9 @@ stopwords <- stopwords("pt", source = "stopwords-iso")
 tokens <- lapply(tokens, function(tk) tk[!tk %in% stopwords])
 
 head(tokens)
+
+# # Criando vocabulário e a frequencia total
+#
 
 # Criação do vocabulário
 vocab <- sort(unique(unlist(tokens))) # Junta todas as palavras, tira repetidas e ordena em ordem alfabética
@@ -97,6 +111,8 @@ freq_sorted <- sort(frequencia, decreasing = TRUE) # Ordena da mais frequente pa
 top10 <- head(freq_sorted, 10)
 print(top10)
 
+# # Criando matriz termo-documento
+
 # linha = termo, coluna = site
 tdm <- sapply(tokens, function(t)
   as.integer(table(factor(t, levels = vocab)))  # Conta quantas vezes cada palavra do vocabulário aparece
@@ -105,12 +121,16 @@ rownames(tdm) <- vocab # Nomeia as linhas com as palavras do vocabulário
 
 dim(tdm)
 
+# # Busca booleana
+
 busca_booleana <- function(termo, tdm) {
   if (!termo %in% rownames(tdm)) return(character(0)) # Se o termo não existe no vocabulário, retorna vazio
   colnames(tdm)[tdm[termo, ] > 0] # Retorna os nomes das colunas onde o termo aparece
 }
 busca_booleana("porto", tdm)
 busca_booleana("cidade", tdm)
+
+# # Cálculo do TF-IDF
 
 tf  <- tdm # frequência do termo em cada parágrafo
 N   <- ncol(tdm) # Número total de documentos
@@ -139,10 +159,14 @@ res_df <- data.frame( # Monta uma tabela com o resultado
 )
 head(res_df, 10)
 
+# #BM25
+
 # Pegando os 8 primeiros paragrafos
 tokens_8 <- head(tokens, 8)
 vocab_8 <- sort(unique(unlist(tokens_8)))
 tokens_8
+
+# # Calculo do TF, |d| e a média
 
 tf <- sapply(tokens_8, function(t) as.integer(table(factor(t, levels = vocab_8)))) # Matriz de contagem
 rownames(tf) <- vocab_8
@@ -151,6 +175,8 @@ avgdl <- mean(dl) # avgdl: tamanho Médio do corpus
 dl
 avgdl
 
+# #IDF Probabilístico
+
 N <- ncol(tf)
 df <- rowSums(tf > 0)
 
@@ -158,6 +184,8 @@ df <- rowSums(tf > 0)
 idf <- log((N - df + 0.5) / (df + 0.5) + 1)
 
 round(idf[c("santos", "porto", "cidade")], 3)
+
+# # Calculo do BM25
 
 k1 <- 1.2; b <- 0.75 # Parâmetros padrão do BM25: k1 controla saturação do TF, b controla peso do tamanho
 bm25_doc <- function(termos, d) {
@@ -178,5 +206,8 @@ res_df <- data.frame(
   score = round(as.numeric(res), 4),
   row.names = NULL
 )
+
+head(res_df, 10)
+
 
 head(res_df, 10)
