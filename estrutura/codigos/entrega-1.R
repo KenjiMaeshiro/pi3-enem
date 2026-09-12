@@ -53,6 +53,7 @@ tokens <- lapply(corpus$paragrafo, tokenizar)
 names(tokens) <- paste0("paragrafo-", 1:nrow(corpus)) #Renomeia o nome de cada parágrafo
 head(tokens)
 
+
 # # Criando vocabulário e a frequencia total
 
 # Criação do vocabulário
@@ -66,3 +67,23 @@ freq_sorted <- sort(frequencia, decreasing = TRUE) # Ordena da mais frequente pa
 
 top10 <- head(freq_sorted, 10)
 print(top10)
+
+# # Criando matriz termo-documento
+
+# linha = termo, coluna = site
+tdm <- sapply(tokens, function(t)
+  as.integer(table(factor(t, levels = vocab)))  # Conta quantas vezes cada palavra do vocabulário aparece
+)
+rownames(tdm) <- vocab # Nomeia as linhas com as palavras do vocabulário
+
+dim(tdm)
+
+# # Busca booleana
+
+busca_booleana <- function(termo, tdm) {
+  if (!termo %in% rownames(tdm)) return(character(0)) # Se o termo não existe no vocabulário, retorna vazio
+  colnames(tdm)[tdm[termo, ] > 0] # Retorna os nomes das colunas onde o termo aparece
+}
+busca_booleana("porto", tdm)
+busca_booleana("cidade", tdm)
+
