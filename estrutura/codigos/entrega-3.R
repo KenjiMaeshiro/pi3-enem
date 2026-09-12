@@ -1,8 +1,7 @@
 # # Importação de bibliotecas e dados
 
-install.packages(c("stopwords","tidytext", "SnowballC", "stringr", "dplyr"))
+install.packages(c("stopwords","tidytext", "stringr", "dplyr"))
 
-library(SnowballC)   # Biblioteca para redução palavras ao radical
 library(tidytext)    # Biblioteca para mineração de texto
 library(stopwords)   # Biblioteca de listas de stopwords
 library(httr2)       # Biblioteca para acesso de HTTP (scraping/APIs)
@@ -62,12 +61,6 @@ limpar <- function(texto) {
 }
 corpus$paragrafo <- limpar(corpus$paragrafo)
 head(corpus)
-
-# # Algoritmo Snowball
-
-wordStem(c("portos", "cargas", "terminais", "importações", "mercadores", "santos", "movimentacao", "transportes", "operacional", "conteineres", "porto"),
-         language="portuguese")
-#O SnowballC transforma palavras diferentes, como ‘porto’ e ‘portos’, em uma forma comum para facilitar a busca
 
 # # Tokenizar
 
