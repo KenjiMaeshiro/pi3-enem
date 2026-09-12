@@ -27,12 +27,13 @@ corpus <- lapply(seq_along(docs), function(i) {
   paragrafos <- unlist(strsplit(docs[[i]], "\n")) # Separa o texto em parágrafos
   paragrafos <- paragrafos[nchar(trimws(paragrafos)) > 0] # Tira parágrafos vazios ou só com espaços
   data.frame( # Cria uma tabela com duas colunas:
-    texto = paste0("paragrafo-", seq_along(paragrafos)),
     paragrafo = paragrafos # Cada parágrafo em uma linha
   )
 })
 
 corpus <- bind_rows(corpus) # Junta todas as tabelas em uma só
+corpus$texto <- paste0("paragrafo", 1:nrow(corpus))
+corpus <- corpus[, c("texto", setdiff(names(corpus), "texto"))]
 head(corpus)
 
 # # Limpeza dos textos
