@@ -77,6 +77,16 @@ rownames(tdm) <- vocab # Nomeia as linhas com as palavras do vocabulário
 
 dim(tdm)
 
+# # Busca booleana
+
+busca_booleana <- function(termo, tdm) {
+  if (!termo %in% rownames(tdm)) return(character(0)) # Se o termo não existe no vocabulário, retorna vazio
+  colnames(tdm)[tdm[termo, ] > 0] # Retorna os nomes das colunas onde o termo aparece
+}
+busca_booleana("porto", tdm)
+busca_booleana("cidade", tdm)
+
+
 # # Cálculo do TF-IDF
 
 tf  <- tdm # frequência do termo em cada parágrafo
