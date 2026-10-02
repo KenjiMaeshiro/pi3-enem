@@ -1,0 +1,318 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Julgamento de Relevância</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f5f5f5;margin:0;color:#222}
+.wrap{max-width:1000px;margin:auto;padding:24px}
+.card{background:#fff;border-radius:12px;padding:22px;box-shadow:0 2px 10px #0001;margin-bottom:18px}
+.muted{color:#666;font-size:14px}
+.q{font-size:18px;font-weight:700}
+.doc{white-space:pre-wrap;line-height:1.65;border:1px solid #ddd;border-radius:8px;padding:18px;background:#fafafa;max-height:420px;overflow:auto}
+.opts{display:flex;gap:10px;flex-wrap:wrap}
+.opts label{border:2px solid #ddd;padding:12px 16px;border-radius:8px;cursor:pointer}
+.opts label.sel{border-color:#222;background:#222;color:#fff}
+.bar{display:flex;justify-content:space-between;align-items:center}
+button{padding:10px 16px;border:0;border-radius:8px;cursor:pointer;font-weight:700;margin:3px}
+button:disabled{opacity:.45}
+.primary{background:#222;color:#fff}
+.secondary{background:#ddd}
+.danger{background:#f0caca}
+.progress{height:8px;background:#ddd;border-radius:10px;overflow:hidden}
+.fill{height:100%;background:#333;width:0}
+label.field{display:block;margin:10px 0 4px;font-weight:700;font-size:14px}
+input[type=text],input[type=number],input[type=file]{padding:8px;border:1px solid #ccc;border-radius:6px;width:100%;box-sizing:border-box}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.row>div{flex:1;min-width:220px}
+#hint{font-size:13px;color:#888;margin-top:8px}
+.hidden{display:none}
+#timer{font-variant-numeric:tabular-nums}
+</style></head>
+<body><div class="wrap">
+
+<!-- TELA DE CONFIGURAÇÃO -->
+<div id="tela-config" class="card">
+  <h1>Julgamento de Relevância</h1>
+  <p class="muted">Página única, offline, sem nenhuma requisição de rede. Carregue os três CSVs do
+  Entregável 5 e comece.</p>
+  <div class="row">
+    <div>
+      <label class="field">Corpus (id,titulo,texto,data,fonte,url)</label>
+      <input type="file" id="f-corpus" accept=".csv">
+    </div>
+    <div>
+      <label class="field">Necessidades (consulta,texto_consulta,necessidade,escopo)</label>
+      <input type="file" id="f-necessidades" accept=".csv">
+    </div>
+    <div>
+      <label class="field">Pool a julgar (consulta,documento)</label>
+      <input type="file" id="f-pool" accept=".csv">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label class="field">Seu nome (juiz)</label>
+      <input type="text" id="juiz" placeholder="ex.: maria">
+    </div>
+    <div>
+      <label class="field">Semente do embaralhamento</label>
+      <input type="number" id="seed" placeholder="gerada automaticamente">
+      <div id="hint">Anote esta semente. Se dois juízes usarem sementes diferentes, a ordem de
+      exibição não coincide entre eles — o que é bom, evita viés de posição correlacionado.</div>
+    </div>
+    <div>
+      <label class="field">
+        <input type="checkbox" id="segunda-passada"> Segunda passada
+      </label>
+      <div id="hint">Marque isto se você (ou outra pessoa) já julgou esta mesma pool antes e quer
+      julgar de novo sem ver a nota anterior — usado para medir concordância/consistência
+      (Entregável 7). O julgamento anterior não é apagado, os dois ficam registrados.</div>
+    </div>
+  </div>
+  <button class="primary" id="comecar">Começar</button>
+  <div id="erro-config" class="muted" style="color:#a00"></div>
+</div>
+
+<!-- TELA DE JULGAMENTO -->
+<div id="tela-julgar" class="hidden">
+  <div class="card"><div class="bar">
+    <div><h1>Julgamento de Relevância</h1><div id="count" class="muted"></div></div>
+    <div><div id="pct" class="muted"></div><div id="timer" class="muted"></div></div>
+  </div><div class="progress"><div id="fill" class="fill"></div></div></div>
+
+  <div class="card"><div class="muted">Necessidade / consulta</div>
+    <div id="query" class="q"></div>
+    <div id="escopo" class="muted"></div>
+  </div>
+
+  <div class="card"><div class="muted">Documento</div><div id="doc" class="doc"></div></div>
+
+  <div class="card"><div class="muted">Grau de relevância (atalhos: 0, 1, 2 — setas ← → navegam)</div>
+    <div class="opts">
+      <label id="lbl0"><input type="radio" name="rel" value="0"> 0 — Não relevante</label>
+      <label id="lbl1"><input type="radio" name="rel" value="1"> 1 — Parcialmente relevante</label>
+      <label id="lbl2"><input type="radio" name="rel" value="2"> 2 — Altamente relevante</label>
+    </div>
+  </div>
+
+  <div class="card">
+    <button id="prev" class="secondary">← Anterior</button>
+    <button id="next" class="primary">Próximo →</button>
+    <button id="export" class="primary">Exportar CSV</button>
+    <button id="clear" class="danger">Limpar julgamentos desta sessão</button>
+    <p class="muted">A interface não revela qual modelo recuperou o documento nem a posição
+    original de nenhum ranking.</p>
+  </div>
+</div>
+
+<script>
+// ---------- CSV parser simples (RFC4180: aspas, virgula, quebras de linha dentro de aspas) ----------
+function parseCSV(text) {
+  const rows = []; let row = []; let field = ''; let inQuotes = false;
+  text = text.replace(/\r\n/g, '\n');
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else { inQuotes = false; } }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  const header = rows.shift().map(h => h.trim());
+  return rows.filter(r => r.length > 1 || r[0] !== '').map(r => {
+    const obj = {}; header.forEach((h, idx) => obj[h] = (r[idx] ?? '').trim()); return obj;
+  });
+}
+function readFile(input) {
+  return new Promise((resolve, reject) => {
+    const file = input.files[0];
+    if (!file) { reject('nenhum arquivo selecionado em ' + input.id); return; }
+    const r = new FileReader();
+    r.onload = () => resolve(parseCSV(r.result));
+    r.onerror = reject;
+    r.readAsText(file, 'utf-8');
+  });
+}
+
+// ---------- PRNG determinístico a partir da semente (mulberry32) ----------
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function seededShuffle(arr, seed) {
+  const rnd = mulberry32(seed);
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ---------- estado ----------
+let ITEMS = [];        // {consulta, documento, texto, necessidade, escopo}
+let QUERIES = {};       // consulta -> {texto_consulta, necessidade, escopo}
+let JUIZ = '';
+let SEED = 0;
+let SEGUNDA_PASSADA = false;
+let STORAGE_KEY = '';
+let i = 0;
+let judgments = {};     // sessionKey -> {grau, timestamp, segundos}
+let tItemStart = 0;
+let timerHandle = null;
+
+function sessionKey(x, pass) {
+  return [x.consulta, x.documento, JUIZ, pass].join('||');
+}
+function currentPass(x) {
+  // se é segunda passada e ainda não existe registro de passada 2 pra este item nesta sessao,
+  // usamos pass=2; senão pass=1. Isso garante que os dois julgamentos fiquem lado a lado no export.
+  return SEGUNDA_PASSADA ? 2 : 1;
+}
+
+function saveLocal() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ i, judgments })); } catch (e) {}
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    i = parsed.i || 0;
+    judgments = parsed.judgments || {};
+    return true;
+  } catch (e) { return false; }
+}
+
+document.getElementById('comecar').onclick = async () => {
+  const erro = document.getElementById('erro-config');
+  erro.textContent = '';
+  try {
+    JUIZ = document.getElementById('juiz').value.trim();
+    if (!JUIZ) { erro.textContent = 'Preencha seu nome de juiz.'; return; }
+    SEGUNDA_PASSADA = document.getElementById('segunda-passada').checked;
+    const seedInput = document.getElementById('seed').value.trim();
+    SEED = seedInput ? parseInt(seedInput, 10) : Math.floor(Math.random() * 1e9);
+    document.getElementById('seed').value = SEED;
+
+    const [corpusRows, necRows, poolRows] = await Promise.all([
+      readFile(document.getElementById('f-corpus')),
+      readFile(document.getElementById('f-necessidades')),
+      readFile(document.getElementById('f-pool')),
+    ]);
+
+    const corpusById = {};
+    corpusRows.forEach(r => corpusById[r.id] = r.texto);
+    necRows.forEach(r => QUERIES[r.consulta] = r);
+
+    const semTexto = [];
+    ITEMS = poolRows.map(r => {
+      const texto = corpusById[r.documento];
+      if (texto === undefined) semTexto.push(r.documento);
+      return { consulta: r.consulta, documento: r.documento, texto: texto || '(id não encontrado no corpus: ' + r.documento + ')' };
+    });
+    if (semTexto.length) {
+      erro.textContent = 'Aviso: ' + semTexto.length + ' documento(s) da pool não foram encontrados no corpus (conferir ids): ' + semTexto.slice(0,5).join(', ');
+    }
+
+    ITEMS = seededShuffle(ITEMS, SEED);
+
+    STORAGE_KEY = 'julgamento_v1__' + JUIZ + '__' + (SEGUNDA_PASSADA ? 'p2' : 'p1');
+    const retomado = loadLocal();
+
+    document.getElementById('tela-config').classList.add('hidden');
+    document.getElementById('tela-julgar').classList.remove('hidden');
+    if (retomado) alert('Progresso anterior encontrado para "' + JUIZ + '" — retomando de onde parou.');
+    render();
+  } catch (e) {
+    erro.textContent = 'Erro ao carregar: ' + e;
+  }
+};
+
+function key(x) { return sessionKey(x, currentPass(x)); }
+
+function startTimer() {
+  tItemStart = Date.now();
+  if (timerHandle) clearInterval(timerHandle);
+  timerHandle = setInterval(() => {
+    document.getElementById('timer').textContent = Math.floor((Date.now() - tItemStart) / 1000) + 's neste item';
+  }, 500);
+}
+
+function render() {
+  const x = ITEMS[i];
+  const q = QUERIES[x.consulta] || {};
+  const done = new Set(Object.values(judgments).map(() => 1)).size; // placeholder, recalculado abaixo
+  const totalJulgados = ITEMS.filter(it => judgments[key(it)] !== undefined).length;
+
+  document.getElementById('count').textContent = `Documento ${i+1} de ${ITEMS.length} · ${x.consulta}` + (SEGUNDA_PASSADA ? ' · segunda passada' : '');
+  document.getElementById('pct').textContent = Math.round(totalJulgados / ITEMS.length * 100) + '% concluído';
+  document.getElementById('fill').style.width = (totalJulgados / ITEMS.length * 100) + '%';
+  document.getElementById('query').textContent = q.necessidade || q.texto_consulta || x.consulta;
+  document.getElementById('escopo').textContent = q.escopo ? ('Escopo: ' + q.escopo) : '';
+  document.getElementById('doc').textContent = x.texto;
+
+  const existente = judgments[key(x)];
+  document.querySelectorAll('input[name=rel]').forEach(r => r.checked = false);
+  document.querySelectorAll('.opts label').forEach(l => l.classList.remove('sel'));
+  if (existente !== undefined) {
+    const r = document.querySelector(`input[name=rel][value="${existente.grau}"]`);
+    if (r) { r.checked = true; document.getElementById('lbl'+existente.grau).classList.add('sel'); }
+  }
+
+  document.getElementById('prev').disabled = (i === 0);
+  document.getElementById('next').textContent = (i === ITEMS.length - 1) ? 'Concluir' : 'Próximo →';
+
+  startTimer();
+}
+
+function registrarGrau(grau) {
+  const x = ITEMS[i];
+  const segundos = Math.round((Date.now() - tItemStart) / 1000);
+  judgments[key(x)] = { grau, timestamp: new Date().toISOString(), segundos };
+  saveLocal();
+  document.querySelectorAll('.opts label').forEach(l => l.classList.remove('sel'));
+  document.getElementById('lbl'+grau).classList.add('sel');
+}
+
+document.querySelectorAll('input[name=rel]').forEach(r => r.addEventListener('change', e => registrarGrau(Number(e.target.value))));
+
+document.getElementById('prev').onclick = () => { if (i > 0) { i--; render(); } };
+document.getElementById('next').onclick = () => { if (i < ITEMS.length - 1) { i++; render(); } else { exportCSV(); } };
+document.getElementById('export').onclick = exportCSV;
+document.getElementById('clear').onclick = () => {
+  if (confirm('Apagar todos os julgamentos desta sessão (' + JUIZ + (SEGUNDA_PASSADA?', 2a passada':'') + ')?')) {
+    judgments = {}; i = 0; saveLocal(); render();
+  }
+};
+
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('tela-julgar').classList.contains('hidden')) return;
+  if (e.key === '0' || e.key === '1' || e.key === '2') { registrarGrau(Number(e.key)); }
+  else if (e.key === 'ArrowLeft') { document.getElementById('prev').click(); }
+  else if (e.key === 'ArrowRight' || e.key === 'Enter') { document.getElementById('next').click(); }
+});
+
+function exportCSV() {
+  const rows = ['consulta,documento,grau,juiz,timestamp,segundos'];
+  ITEMS.forEach(x => {
+    const j = judgments[key(x)];
+    if (j !== undefined) {
+      rows.push([x.consulta, x.documento, j.grau, JUIZ, j.timestamp, j.segundos].map(v => JSON.stringify(String(v))).join(','));
+    }
+  });
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'julgamentos_' + JUIZ + (SEGUNDA_PASSADA ? '_p2' : '_p1') + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+</script>
+</div></body></html>
