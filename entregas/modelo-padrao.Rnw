@@ -1,0 +1,338 @@
+% ==========================================================
+% ENTREGA 1 — O corpus do projeto
+% Projeto Integrador III — Motor de Busca — Ciência de Dados
+% Fatec Baixada Santista – Rubens Lara
+% Derivado de modelo-trabalho.Rnw (R + knitr + abnTeX2)
+% ==========================================================
+%
+% O QUE ENTREGAR
+%   Um texto de NO MÁXIMO 3 PÁGINAS, com quatro seções:
+%     1. Introdução ................... o tema, quem o buscaria, o que este texto faz
+%     2. A fonte e o documento ........ a escolha do corpus e a motivação dela
+%     3. Como o corpus foi obtido ..... os passos da coleta e o que deu errado
+%     4. Defesa do corpus ............. a evidência de que ele serve para o motor
+%   Mais as Referências (não contam nas 3 páginas).
+%
+% ONDE ENTREGAR
+%   O PDF e este .Rnw em  consolidados/
+%   O corpus em  estrutura/banco-de-dados/  (docs.rds, origem.rds); o codigo da coleta em estrutura/codigo/aula01.ipynb
+%   A ficha do projeto em  consolidados/00_FICHA_PROJETO.md  — as seções 1 e 2
+%   deste texto são a ficha em prosa; as duas têm que dizer a mesma coisa.
+%
+% COMO COMPILAR
+%   RStudio: Tools > Global Options > Sweave >
+%            "Weave Rnw files using: knitr" e "Typeset LaTeX into PDF using: pdfLaTeX".
+%            Depois, botão "Compile PDF".
+%   Terminal: Rscript -e "knitr::knit2pdf('entrega-1-corpus.Rnw')"
+%
+% ARQUIVOS NECESSÁRIOS NA MESMA PASTA
+%   entrega-1-corpus.Rnw   (este arquivo)
+%   referencias.bib        (as referências em BibTeX)
+%
+% REQUISITOS
+%   R com knitr; LaTeX com abntex2 (TeX Live: texlive-publishers).
+%   Salve em UTF-8. Se acentos saírem como <U+00E9>, a sessão do R não
+%   está em locale UTF-8 (Linux: LANG=pt_BR.UTF-8 ou C.UTF-8).
+% ==========================================================
+
+\documentclass[
+  article,
+  12pt,
+  oneside,
+  a4paper,
+  english,
+  brazil
+]{abntex2}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{icomma}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[alf]{abntex2cite}
+\usepackage{float}
+
+\hypersetup{hidelinks}
+
+% ----------------------------------------------------------
+% DADOS DA ENTREGA — preencha aqui
+% ----------------------------------------------------------
+\titulo{O corpus do projeto: \textit{Construção de um corpus para busca de informações sobre portos}}
+% O abntex2 imprime um "titulo estrangeiro" logo abaixo do titulo quando o
+% documento declara mais de um idioma. Deixe vazio se nao houver.
+\tituloestrangeiro{}
+\autor{Grupo - Enem}
+\local{Santos-SP}
+\data{\today}
+
+\newcommand{\nomecurso}{Tecnologia em Ciência de Dados}
+\newcommand{\nomedisciplina}{Projeto Integrador III --- Motor de Busca}
+\newcommand{\nomeprofessor}{Prof.\ Dr.\ João Paulo Ferreira de Mello}
+\newcommand{\repositorio}{PI3-ENEM}
+% Um integrante por linha: Nome Completo -- RA
+\newcommand{\integrantes}{%
+  Ana Luiza Bispo Aguiar -- RA 00051352511020 \\
+  Caio Kenji de Paula Maeshiro -- RA 0051352511008 \\
+  Lucas Murinelly Feliciano -- RA 0051352511013\\
+  Pedro Santos Malaquias Rodrigues -- RA 00513525110041\\%
+}
+
+\begin{document}
+
+<<setup, include=FALSE>>=
+library(knitr)
+opts_chunk$set(
+  echo       = FALSE,   # o codigo NAO aparece: ele mora no notebook estrutura/codigo/aula01.ipynb
+  message    = FALSE,
+  warning    = FALSE,
+  fig.align  = "center",
+  out.width  = "0.52\\linewidth",
+  fig.width  = 4,
+  fig.height = 3.2
+)
+options(OutDec = ",", digits = 4)
+@
+
+<<dados, include=FALSE>>=
+# =========================================================================
+#  TROQUE SOMENTE ESTE BLOCO. O resto do documento se ajusta sozinho.
+# =========================================================================
+# Os dois arquivos que a Parte D da Aula 01 salvou (caminho relativo a
+# consolidados/, onde este .Rnw fica):
+docs   <- readRDS("docs.rds")
+origem <- readRDS("origem.rds")
+origem <- origem$origem
+minimo <- 10          # o limiar de nchar usado na coleta (cfg$minimo no config.R)
+
+# Enquanto voces nao trocarem, o modelo compila com o corpus de teste da
+# aula (8 documentos) e imprime um aviso em vermelho no topo.
+
+corpus_de_teste <- FALSE   # ponha FALSE quando trocar pelos .rds do grupo
+# =========================================================================
+
+# REGRA: nada de acento dentro de string de R -- o acento quebra quando a
+# sessao do R nao esta em locale UTF-8. Onde precisar, escreva o acento em
+# LaTeX ("m\\'edia"): o \Sexpr repassa intacto.
+
+# Texto que vem do corpus entra no LaTeX com escape: % & _ # $ { } ~ ^
+tex <- function(x) {
+  x <- gsub("\\\\", "\\\\textbackslash{}", x)
+  x <- gsub("([%&_#$])", "\\\\\\1", x)
+  x <- gsub("([{}])", "\\\\\\1", x)
+  x <- gsub("~", "\\\\textasciitilde{}", x)
+  x <- gsub("\\^", "\\\\textasciicircum{}", x)
+  x
+}
+
+# --- a cadeia da Aula 01, sobre o corpus ---------------------------------
+tokenizar <- function(texto) unlist(strsplit(tolower(texto), "\\s+"))
+tokens <- lapply(docs, tokenizar)
+tam    <- sapply(tokens, length)                 # tokens por documento
+vocab  <- sort(unique(unlist(tokens)))
+freq   <- sort(table(unlist(tokens)), decreasing = TRUE)
+
+n_docs   <- length(docs)
+n_pags   <- length(unique(origem))
+n_vocab  <- length(vocab)
+n_tokens <- sum(tam)
+
+# --- os textos prontos para o \Sexpr -------------------------------------
+texto_tam   <- paste0(min(tam), " a ", max(tam), " (m\\'edia ", round(mean(tam), 1), ")")
+texto_top10 <- paste0("\\texttt{", tex(names(freq)[1:min(10, length(freq))]), "}", collapse = ", ")
+
+# documentos por pagina, e quem domina
+por_pag     <- sort(table(origem), decreasing = TRUE)
+texto_dom   <- paste0("\\texttt{", tex(names(por_pag)[1]), "}: ", por_pag[1], " de ", n_docs,
+                      " (", round(100 * por_pag[1] / n_docs), "\\%)")
+
+# documentos curtos e longos demais (suspeitos de nao serem prosa)
+curtos <- sum(tam < 20)
+longos <- sum(tam > 300)
+texto_extremos <- paste0(curtos, " com menos de 20 tokens; ", longos, " com mais de 300")
+
+# sinais de sujeira: acentos, pontuacao grudada, digitos
+tem_acento <- sum(grepl("[^ -~]", docs))
+tem_pont   <- sum(grepl("[[:punct:]]", docs))
+tem_dig    <- sum(grepl("[0-9]", docs))
+texto_sujo <- paste0(tem_acento, " com acento, ", tem_pont, " com pontua\\c{c}\\~ao, ",
+                     tem_dig, " com d\\'igitos (de ", n_docs, ")")
+
+# tabela de origem
+tab_origem <- data.frame(
+  Pagina     = tex(names(por_pag)),
+  Documentos = as.integer(por_pag),
+  Tokens     = round(tapply(tam, origem, mean)[names(por_pag)], 1),
+  row.names  = NULL
+)
+names(tab_origem) <- c("P\\'agina", "Documentos", "Tokens (m\\'edia)")
+@
+
+\selectlanguage{brazil}
+\frenchspacing
+
+% ----------------------------------------------------------
+% IDENTIFICAÇÃO
+% ----------------------------------------------------------
+\maketitle
+
+\begin{center}
+  \small
+  Fatec Baixada Santista -- Rubens Lara \\
+  \nomecurso{} \quad|\quad \nomedisciplina{} \quad|\quad \nomeprofessor{} \\[0.4em]
+  \integrantes \\[0.4em]
+  Repositório: \texttt{\repositorio}
+\end{center}
+
+<<aviso, results="asis">>=
+if (corpus_de_teste) cat("\\begin{center}\\color{red}\\textbf{ATEN\\c{C}\\~AO: compilado com o corpus de teste da aula, n\\~ao com o do grupo.}\\end{center}\n")
+@
+
+\textual
+
+% ==========================================================================
+\section{Introdução}
+% ==========================================================================
+% ~meia página. O QUE VAI AQUI:
+%   - o tema do motor de busca, em uma frase, e a ligação com a Baixada
+%     Santista (o lugar, a história, a atividade, as pessoas);
+%   - quem usaria o motor e o que essa pessoa quer descobrir;
+%   - as três perguntas que o motor deve responder (as da ficha, seção 2);
+%   - o que este texto entrega: o corpus escolhido, como foi obtido, e a
+%     evidência de que ele serve.
+% NÃO adiante aqui os números da Seção 4.
+A recuperação de informação visa facilitar a localização de conteúdos relevantes. Este projeto tem como foco os portos de Santos, Xangai e Roterdã, utilizando um motor de busca para recuperar informações sobre eles no corpus. O interesse pelo tema justifica-se pela importância dos portos no transporte e comércio. Por fim, serão apresentadas evidências para avaliar se o corpus responde adequadamente às necessidades de informação definidas.
+% ==========================================================================
+\section{A fonte e o documento}
+% ==========================================================================
+% ~três quartos de página. O QUE VAI AQUI:
+%   - ORIGEM: de onde veio o texto (Wikipédia, portal, jornal...), com a
+%     referência bibliográfica, a LICENÇA e a data de acesso;
+%   - AS PÁGINAS: os títulos exatos usados, e por que essas;
+%   - O DOCUMENTO: o que é UMA LINHA do corpus (um parágrafo? uma notícia?
+%     uma seção?) e por quê -- o critério é "a menor unidade que responde
+%     sozinha a uma pergunta";
+%   - MOTIVAÇÃO: por que este corpus, e não outro. Responda honestamente:
+%     interesse pelo assunto? disponibilidade? conhecimento prévio do
+%     grupo? Todas são razões legítimas -- o que não vale é não ter razão.
+%     Cite a alternativa que foi descartada, e por quê.
+
+A fonte escolhida para a construção do corpus foi a Wikipédia em português. A escolha dessa fonte ocorreu devido à disponibilidade de informações textuais sobre os portos estudados e à possibilidade de realizar a coleta de forma programática por meio da API da Wikipédia \cite{wiki_api}. As páginas utilizadas foram:
+
+\begin{itemize}
+\item \textit{Porto de Santos} \cite{wiki_porto_santos};
+\item \textit{Porto de Xangai} \cite{wiki_porto_xangai};
+\item \textit{Porto de Roterdão} \cite{wiki_porto_roterdao}.
+\end{itemize}
+
+O conteúdo utilizado é disponibilizado pela Wikipédia sob os termos da licença Creative Commons Atribuição-CompartilhaIgual (CC BY-SA), que permite a reutilização e adaptação do conteúdo desde que sejam respeitadas as condições estabelecidas pela licença
+
+As três páginas foram escolhidas por tratarem diretamente dos portos estudados e apresentarem informações relacionadas às necessidades de informação do projeto, como movimentação de cargas e contêineres, infraestrutura, história, desenvolvimento e importância econômica.
+
+No corpus, cada parágrafo foi considerado um documento, pois essa unidade permite recuperar informações mais específicas do que uma página inteira. Assim, o motor de busca pode retornar um trecho relacionado à consulta, em vez de indicar somente uma página completa.
+
+A escolha do tema está relacionada ao interesse em estudar e comparar os portos de Santos, Xangai e Roterdão. Como alternativa, poderiam ser utilizados portais institucionais das autoridades portuárias, mas optou-se pela Wikipédia por oferecer uma fonte comum aos três portos, facilitando a construção de um corpus mais uniforme.
+
+% ==========================================================================
+\section{Como o corpus foi obtido}
+% ==========================================================================
+% ~meia página. O QUE VAI AQUI:
+%   - os passos da coleta (notebook aula01.ipynb), na ordem em que rodam (chamada à API, quebra
+%     em parágrafos, filtro, montagem do vetor, gravação) -- em prosa, sem
+%     colar código: o código está em estrutura/codigo/aula01.ipynb;
+%   - O QUE DEU ERRADO e o que o grupo fez: título de página errado,
+%     parágrafos que eram listas ou referências, artigo que dominou o
+%     corpus, acentos... Esta parte é obrigatória. Coleta sem problema
+%     não existe.
+
+O corpus foi obtido de três artigos da Wikipédia — Porto de Santos, Porto de Xangai e Porto de Roterdão — por meio da API da Wikipédia, em formato texto. Cada artigo foi dividido em parágrafos; parágrafos vazios foram removidos e adotou-se o critério de manter apenas parágrafos com \Sexpr{minimo} palavras ou mais. Esse limite evita trechos curtos com pouca informação relevante, sem reduzir excessivamente o corpus. Por fim, os parágrafos dos três artigos foram reunidos, e cada parágrafo passou a ser um documento.
+
+% ==========================================================================
+\section{Defesa do corpus}
+% ==========================================================================
+% ~uma página. É A SEÇÃO QUE PESA MAIS. O QUE VAI AQUI:
+%   - o diagnóstico do corpus (Tabela 1 e Tabela 2), comentado item a item;
+%   - a passagem pelos quatro descartes: tamanho, domínio de uma página,
+%     documentos que não são prosa, sujeira -- dizendo o que foi encontrado
+%     e o que o grupo fez a respeito;
+%   - a figura dos tamanhos (Figura 1), com uma frase de leitura;
+%   - os dez termos mais frequentes: quantos dizem algo sobre o tema?
+%   - o veredito: o corpus responde às três perguntas da Introdução?
+%     Se um descarte pegou, o que mudou no corpus por causa dele?
+% Os números desta seção saem do bloco <<dados>> -- eles se atualizam
+% sozinhos quando voces trocarem os .rds.
+
+O corpus é adequado ao motor de busca por quatro razões: é coerente com o tema, pois seus 75 documentos vêm de páginas dedicadas aos portos de Santos, Xangai e Roterdão; usa o parágrafo como unidade, com média de 70,7 tokens, o que permite respostas específicas; é uniforme e reprodutível, por vir de uma única fonte coletada via API; e tem vocabulário suficiente (1946 termos distintos) para as consultas. Os problemas encontrados, como a baixa representação de Roterdão e o ruído do texto bruto, já têm tratamento previsto e não comprometem o corpus nesta fase.
+
+A Tabela~\ref{tab:diag} reúne as verificações feitas sobre o corpus, e a
+Tabela~\ref{tab:origem} mostra de onde veio cada documento.
+
+\begin{table}[htb]
+  \centering
+  \caption{Diagnóstico do corpus}
+  \label{tab:diag}
+  \small
+  \begin{tabular}{@{}p{0.34\textwidth}p{0.58\textwidth}@{}}
+    \toprule
+    \textbf{Verificação} & \textbf{Resultado} \\
+    \midrule
+    Tamanho ($N$ documentos, páginas) & $\Sexpr{n_docs}$ documentos de $\Sexpr{n_pags}$ páginas \\
+    Tokens por documento              & \Sexpr{texto_tam} \\
+    Vocabulário bruto                 & \Sexpr{n_vocab} termos distintos em \Sexpr{n_tokens} tokens \\
+    Página que domina                 & \Sexpr{texto_dom} \\
+    Documentos suspeitos              & \Sexpr{texto_extremos} \\
+    Sujeira                           & \Sexpr{texto_sujo} \\
+    \bottomrule
+  \end{tabular}
+  \fonte{Elaborada pelos autores a partir de \texttt{docs.rds} e \texttt{origem.rds}.}
+\end{table}
+
+\begin{table}[htb]
+  \centering
+  \caption{Documentos por página de origem}
+  \label{tab:origem}
+  \small
+<<tab-origem, results="asis">>=
+kable(tab_origem, format = "latex", booktabs = TRUE, row.names = FALSE, escape = FALSE)
+@
+  \fonte{Elaborada pelos autores.}
+\end{table}
+
+\textbf{Tamanho.} São $\Sexpr{n_docs}$ documentos,o que está acima da meta estipulada. Diante disso, pretende-se arrumar o critério de corte, aumentando o limite mínimo de palavras por parágrafo e excluindo seções que não constituem prosa contínua, a fim de adequar o volume e manter a qualidade informacional do corpus para as próximas etapas. Tabela~\ref{tab:origem}
+
+\textbf{Domínio de uma página.} Nenhuma página responde por quase todo o corpus, mas a distribuição é desequilibrada. Observa-se que o Porto de Xangai responde por 51 por cento dos documentos, o que configura um desequilíbrio a corrigir. Como solução, pretende-se acrescentar novas páginas sobre o Porto de Roterdão para equilibrar a representação do corpus.
+
+\textbf{Documentos que não são prosa.} Não se realizou uma inspeção individual dos documentos extremos. A única filtragem adotada foi a remoção de parágrafos vazios e a aplicação do critério de seleção de parágrafos com 10 palavras ou mais, o que não eliminou completamente trechos não prosaicos. Optou-se por manter esses casos nesta etapa e registrá-los, para tratá-los posteriormente.
+
+\textbf{Sujeira.} Observa-se que a maioria dos documentos contém ruído típico de texto bruto: todos os 75 apresentam acentos e pontuação, e 57 contêm dígitos.Conclui-se que o corpus ainda se encontra em estado bruto, com elementos que deverão ser tratados na etapa de limpeza, sem prejuízo da análise atual.
+
+A Figura~\ref{fig:tam} mostra a distribuição dos tamanhos.
+
+\begin{figure}[H]
+  \centering
+  \caption{Tokens por documento}
+  \label{fig:tam}
+<<fig-tam>>=
+par(mar = c(4, 4, 1, 1))
+hist(tam, breaks = 15, col = "#D6EAF3", border = "white",
+     main = "", xlab = "tokens por documento", ylab = "documentos")
+@
+  \fonte{Elaborada pelos autores.}
+\end{figure}
+
+\textbf{Os termos mais frequentes} são \Sexpr{texto_top10}. Dos dez termos mais frequentes, apenas "porto" remete ao tema; os demais são artigos, preposições e conjunções. Isso indica que a frequência bruta é dominada por palavras gramaticais, o que sugere a necessidade de remover stopwords.
+
+\textbf{Veredito.} Conclui-se que o corpus atende de forma adequada às consultas sobre os portos de Santos e Xangai, que reúnem 69 dos 75 documentos, mas de forma limitada às consultas sobre o Porto de Roterdão, representado por apenas 6. O descarte que de fato identificou um problema foi o domínio de uma página, e a correção prevista é o acréscimo de novas páginas, sem remoção de documentos.
+
+O corpus é \textbf{provisório}: Espera-se que as próximas etapas alterem sua composição, com o acréscimo de páginas sobre Roterdão e a possível remoção dos trechos muito curtos após a limpeza.
+
+% ----------------------------------------------------------
+% REFERÊNCIAS — não contam nas 3 páginas.
+% Só aparecem as obras citadas. Para incluir uma obra não citada,
+% use \nocite{chave}.
+% ----------------------------------------------------------
+\postextual
+\bibliography{referencias}
+
+\end{document}
