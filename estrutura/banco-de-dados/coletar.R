@@ -39,6 +39,8 @@ corpus <- corpus |>
   select(-n_palavras) # Remove a coluna auxiliar que foi criada só para contar
 docs <- corpus |> select(texto, paragrafo)
 origens <- corpus |> select (origem, paragrafo)
+docs <- setNames(corpus$paragrafo, corpus$texto)
+origem <- corpus$origem
 
 #head(docs)
 #head(origens)
