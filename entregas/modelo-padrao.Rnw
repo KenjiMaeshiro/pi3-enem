@@ -103,7 +103,6 @@ options(OutDec = ",", digits = 4)
 # consolidados/, onde este .Rnw fica):
 docs   <- readRDS("docs.rds")
 origem <- readRDS("origem.rds")
-origem <- origem$origem
 minimo <- 10          # o limiar de nchar usado na coleta (cfg$minimo no config.R)
 
 # Enquanto voces nao trocarem, o modelo compila com o corpus de teste da
