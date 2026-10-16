@@ -1,6 +1,6 @@
 # Consolidado — PI III — Aula 06 — 2026-10-16
 *guia versão 1 · tutora: Claude · sessão individual (teoria) · motor06*
-**Aluno:** <seu nome>
+**Aluno:** Lucas Murinelly Feliciano
 
 ## 1. O que foi passado
 - M1 — o ciclo de realimentação; $D_r$ e $D_{nr}$ no ranking do cosseno
