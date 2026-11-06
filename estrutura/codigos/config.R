@@ -21,7 +21,7 @@ cfg <- list(
 
   # --- Aula 5,5: metricas -------------------------------------------------
   limiar = 2,                   # Aula 5,5: grau >= 2 conta como relevante
-  # juizes = c("murinelly", "lucas"),   # ⚠ quem vale no gabarito, em ordem de prioridade: nao registrado
+  juizes = "consenso",          # gabarito de consenso (qrels_consenso.csv)
 
   # --- Aula 06: realimentacao (DECISAO DO GRUPO, Modulo 9) ----------------
   # prf_k   = 0,                            # 0 = sem pseudo-realimentacao; k = usa os top-k
