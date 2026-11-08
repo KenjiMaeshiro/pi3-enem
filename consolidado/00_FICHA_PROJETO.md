@@ -98,7 +98,7 @@
 
 <!-- estado-R:inicio -->
 ## Estado do R ao fim da sessão
-*gerado por `anexar_estado()` em 2026-11-08 00:52 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
+*gerado por `anexar_estado()` em 2026-11-08 00:56 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
 
 ### Objetos
 
@@ -130,7 +130,7 @@
 | `candidatos_por_consulta$q19` | character | 1 | doc-fecae25906e7b91c |
 | `candidatos_por_consulta$q20` | character | 2 | doc-fecae25906e7b91c, doc-543790f4a0744d86 |
 | `cc` | data.frame | 60 × 3 | colunas: texto, fonte, id |
-| `cfg$minimo` | numeric | 1 | 200 |
+| `cfg$minimo` | numeric | 1 | 10 |
 | `cfg$limpar` | logical | 1 | TRUE |
 | `cfg$acentos` | character | 1 | translit |
 | `cfg$stopwords` | character | 10 | de, o, a, e, um, por, ... |
