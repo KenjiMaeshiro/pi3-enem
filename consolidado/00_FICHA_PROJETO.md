@@ -1,7 +1,7 @@
 # Ficha do projeto — grupo Enem
 
 *Reconstruída na Aula 06 (Parte D) em 07/11/2026: a ficha original se perdeu. Fontes: consolidados do repositório (`consolidado/aula00` a `aula07`), guias, `corpus.csv`, `necessidades.csv`, `qrels_consenso.csv`, `config.R`, o notebook `entrega-4.ipynb` e, em 08/11/2026, o relatório da Entrega 1 (`entregas/entrega-1.pdf`). O que nenhum registro confirma está como `—`; o grupo confere seção por seção.*
-*Última atualização: Aula 07 Parte D, 08/11/2026, motor07.*
+*Última atualização: Aula 08 Parte D, 08/11/2026, motor08.*
 
 ---
 
@@ -56,7 +56,8 @@
 | métricas (P@k, MAP, MRR, nDCG) dos modelos | 5,5 | — (`metricas.R` e `rodar_metricas_corrigido.R` não estão no repositório) | ok |
 | realimentação (Rocchio, pseudo-realimentação) | 06 | `entrega-4.ipynb` (seções da Aula 06) | testado, desligado (`prf_k = 0`) |
 | LSA e busca híbrida | 07 | `entrega-4.ipynb` (seções da Aula 07) | testado, não usado (`modelo = "bm25"`) |
-| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio`, `modelo`, `lsa_k`, `rrf_c` |
+| reordenação (proximidade ordenada) | 08 | `entrega-4.ipynb` (seções da Aula 08) | ok (`rerank_k = 3`, `janela = 3`, sobre o BM25) |
+| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio`, `modelo`, `lsa_k`, `rrf_c`, `rerank_k`, `janela` |
 
 ## 6. Decisões
 
@@ -84,6 +85,9 @@
 - Aula 07: resultado — LSA × BM25 na consulta q01 ($k = 20$, 68,5% da energia): 3 documentos em comum nos top-5; só o LSA trouxe o `37b06b`, sem nenhuma palavra da consulta, que fala do transporte de mercadorias pelo porto (lido pelo grupo como ganho de sentido); só o BM25 trouxe o `770191`, pelas palavras exatas "movimentacao" e "cargas", mas ele só conta a história das operações · resultado, sem campo
 - Aula 07: modelo do motor = **bm25**, porque é o mais confiável: o LSA só passa do BM25 com $k = 50$, que é quase a matriz inteira (60 documentos) e ganha em apenas 2 de 11 consultas (q08, q14); com $k = 10$ ou $20$ o LSA perde em 8 de 11 (MAP dev BM25 0,907; LSA $k = 10$/$20$/$50$ 0,430/0,518/0,944; híbrido 0,683/0,787/0,915; sem teste; ressalva: 11 consultas) · `cfg$modelo = "bm25"`, `cfg$lsa_k = 50`, `cfg$rrf_c = 60` (registram o que foi testado; não usados com "bm25")
 - Aula 07: análise LSA × BM25 (tarefa do grupo) — **onde o LSA ganhou, q14** ($k = 50$, AP 0,312 → 0,556): o BM25 pôs em 1º o `0216e3`, que não fala de acidentes (grau 0), e o relevante `be66af` em 2º; o LSA inverteu, pondo em 1º o `be66af`, que narra o incêndio de 2015 nos tanques de combustíveis da Alemoa, porque olha o assunto do texto inteiro (incêndio, tanques, combustíveis) e não só quantas vezes as palavras da consulta aparecem. **Onde o LSA perdeu, q01** ($k = 20$, AP 1,000 → 0,500): o LSA pôs em 1º o `54eb31` (grau 0), um texto de 12 palavras sobre o terminal Baoshan, da SIPG, que só tem "cargas" em comum com a consulta e não explica por que as cargas são economicamente importantes, só afirma detalhes do terminal. Com poucas dimensões, o LSA aproxima textos curtos do mesmo assunto geral (cargas, terminais) e perde a especificidade da necessidade. Isso sustenta a decisão de ficar com o BM25 · resultado, sem campo
+- Aula 08: resultado — reordenação por proximidade na consulta q14 (top-10, janela 3, estágio 1 = BM25): AP 0,312 → 0,146. Subiram documentos com "porto de santos" colado (`543790`, `ddecd9`), que têm as palavras em ordem mas não respondem à necessidade; o relevante `be66af` (incêndio de 2015 na Alemoa) ficou com proximidade 0 e saiu do top-5 · resultado, sem campo
+- Aula 08: reordenação = **top-3, janela 3, sobre o estágio 1 BM25**, porque a proximidade premia documentos com as palavras da consulta em ordem, o que deve ajudar em consultas mais longas, mesmo que no gabarito atual tenha perdido em q14, q15 e q16 (MAP dev estágio 1 0,907; grade $k$ 3/5/10 × janela 2/3/5: melhor $k = 3$, janelas 2 e 3, 0,847; pior $k = 10$, janela 5, 0,665; sem teste). Ressalva: a reordenação não ganhou em nenhuma das 11 consultas e baixa o MAP em 0,06; o par mais comum nos textos, "porto de santos", não diz nada sobre a necessidade · `cfg$rerank_k = 3`, `cfg$janela = 3`
+- Aula 08: análise da reordenação (tarefa do grupo) — **onde perdeu, q14** (AP 0,312 → 0,146): a proximidade deu 1 ponto aos documentos com "porto de santos" colado (`0216e3`, `543790`, `ddecd9`), que têm as palavras em ordem mas não respondem à necessidade (incêndios e acidentes); o relevante `be66af`, que narra o incêndio de 2015 na Alemoa, ficou com 0 pontos — tem "incêndio" (no singular) e "terminais", mas não perto e na ordem da consulta — e saiu do top-5. **Onde não mudou, q01** (AP 1,000 → 1,000): os três primeiros do BM25 já estavam na ordem da proximidade (1, 1 e 0 ponto). Em todo o desenvolvimento a reordenação não ganhou em nenhuma consulta · resultado, sem campo
 
 ## 7. Registro por aula
 
@@ -98,6 +102,7 @@
 - **Aula 07 teoria** (23 e 25/10/2026) — Lucas Murinelly Feliciano; LSA, RRF; aviso: `motor07.R` deu 404 no começo.
 - **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula; `cfg$minimo = 10` (palavras). Tarefa do grupo (análise do drift em q11) feita em 08/11/2026, na seção 6. Pendente: campos `—` desta ficha.
 - **Aula 07 Parte D** (08/11/2026) — presentes: Pedro Santos (conduziu); demais: —; digitou: o tutor, a pedido do grupo (R local e Colab). Feito: Módulo 7 (LSA $k = 20$ × BM25 em q01, lendo os textos), Módulo 8 (BM25, LSA e híbrido com $k$ = 10, 20, 50 nas 11 consultas dev; sem teste) e Módulo 9 (decisão: BM25); tarefa do grupo (q14 ganhou, q01 perdeu), na seção 6. Produzido: `config.R` com `modelo = "bm25"`, `lsa_k = 50`, `rrf_c = 60`; seções da Aula 07 no `entrega-4.ipynb`. Pendente: nenhum para a Aula 08 além dos campos `—` desta ficha; `prf_k = 0`, então não há PRF × LSA a decidir.
+- **Aula 08 Parte D** (08/11/2026) — presentes: Pedro Santos (conduziu); demais: —; digitou: o tutor, a pedido do grupo (R local e Colab). Feito: Módulo 7 (proximidade e reordenação sobre o BM25 em q14, lendo os textos; q01 não muda), Módulo 8 (grade $k$ 3/5/10 × janela 2/3/5 nas 11 consultas dev; sem teste) e Módulo 9 (decisão: top-3, janela 3); tarefa do grupo (q14 perdeu, q01 não mudou), na seção 6. Produzido: `config.R` com `rerank_k = 3`, `janela = 3`; seções da Aula 08 no `entrega-4.ipynb`. Pendente: rever a reordenação com mais consultas e julgamentos (hipótese do grupo: ajuda em consultas mais longas).
 
 ## 8. Estado do R
 
