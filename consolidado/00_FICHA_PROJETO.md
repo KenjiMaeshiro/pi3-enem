@@ -1,6 +1,6 @@
 # Ficha do projeto — grupo Enem
 
-*Reconstruída na Aula 06 (Parte D) em 07/11/2026: a ficha original se perdeu. Fontes: consolidados do repositório (`consolidado/aula00` a `aula07`), guias, `corpus.csv`, `necessidades.csv`, `qrels_consenso.csv`, `config.R` e o notebook `entrega-4.ipynb`. O que nenhum registro confirma está como `—`; o grupo confere seção por seção.*
+*Reconstruída na Aula 06 (Parte D) em 07/11/2026: a ficha original se perdeu. Fontes: consolidados do repositório (`consolidado/aula00` a `aula07`), guias, `corpus.csv`, `necessidades.csv`, `qrels_consenso.csv`, `config.R`, o notebook `entrega-4.ipynb` e, em 08/11/2026, o relatório da Entrega 1 (`entregas/entrega-1.pdf`). O que nenhum registro confirma está como `—`; o grupo confere seção por seção.*
 *Última atualização: Aula 06 Parte D, 07/11/2026, motor06.*
 
 ---
@@ -8,8 +8,9 @@
 ## 1. Grupo, repositório e ambiente
 
 - **Grupo:** Enem
-- **Integrantes (pelos registros):** Pedro Santos (GitHub `malaquiias`), Lucas Murinelly Feliciano (`lucas-murinelly`), Kenji Maeshiro (`KenjiMaeshiro`). Outros integrantes: —
-- **Repositório:** https://github.com/KenjiMaeshiro/pi3-enem (público, criado em 04/09/2026 por Kenji Maeshiro)
+- **Integrantes (Entrega 1):** Ana Luiza Bispo Aguiar; Caio Kenji de Paula Maeshiro (GitHub `KenjiMaeshiro`); Lucas Murinelly Feliciano (`lucas-murinelly`); Pedro Santos Malaquias Rodrigues (`malaquiias`).
+- **Instituição:** Fatec Baixada Santista – Rubens Lara · Tecnologia em Ciência de Dados · Projeto Integrador III — Motor de Busca · Prof. Dr. João Paulo Ferreira de Mello.
+- **Repositório:** https://github.com/KenjiMaeshiro/pi3-enem (público, criado em 04/09/2026 por Caio Kenji)
 - **Endereço Raw:** `https://raw.githubusercontent.com/KenjiMaeshiro/pi3-enem/main/`
 - **Ambiente:** Google Colab com R (R 4.6.1). Notebook do grupo: `entrega-4.ipynb`, no Drive de Kenji, limpo em 07/11/2026; cópia do original em `entrega-4 (backup antes da limpeza 2026-11-07).ipynb`.
 - **Pastas:** o repositório usa `consolidado/` e `estrutura/codigos/`; os guias esperam `consolidados/` e `estrutura/codigo/`. A diferença é conhecida; o código do notebook usa `estrutura/codigos/`.
@@ -19,15 +20,17 @@
 - **Tema:** os portos de Santos, Xangai e Roterdã, comparados em história, infraestrutura, movimentação de cargas, administração, integração logística e impactos econômicos.
 - **Ligação com a Baixada Santista:** o Porto de Santos.
 - **Usuário:** um pesquisador ou estudante que quer localizar e comparar informações sobre os três portos (relatório da Aula 05).
-- **Três perguntas da Aula 01:** —
-- **Por que este tema e não outro:** —
+- **Três perguntas da Aula 01:** — (não constam na Entrega 1; as necessidades q01 a q20 da Aula 05 fazem esse papel desde então)
+- **Por que este tema e não outro:** a importância dos portos no transporte e no comércio, e o interesse em estudar e comparar os portos de Santos, Xangai e Roterdã (Entrega 1, 06/10/2026).
 
 ## 3. Fonte e documento
 
 - **Fonte:** Wikipédia em português, pela API (`action=query`, `prop=extracts`, texto puro). Licença CC BY-SA.
-- **Títulos:** `Porto_de_Santos`, `Porto_de_Xangai`, `Porto_de_Roterdão`.
+- **Títulos:** `Porto_de_Santos`, `Porto_de_Xangai`, `Porto_de_Roterdão` (acessados em 14/08/2026).
+- **Por que a Wikipédia:** informações textuais sobre os três portos e coleta programática pela API. Alternativa considerada: os portais institucionais das autoridades portuárias; descartada porque a Wikipédia é uma fonte comum aos três portos e dá um corpus mais uniforme (Entrega 1).
+- **Por que o parágrafo:** permite recuperar trechos específicos, em vez de indicar só uma página inteira (Entrega 1).
 - **O que é um documento:** o parágrafo com pelo menos 10 palavras; os 20 primeiros de cada artigo. Quando o artigo tem menos de 20 parágrafos válidos, o texto inteiro é dividido em 20 partes iguais.
-- **Limitação conhecida (Roterdã):** o artigo `Porto_de_Roterdão` é curto: 555 palavras e só 6 parágrafos com 10 palavras ou mais (conferido em 07/11/2026). Por isso os 20 documentos de Roterdã são janelas de 22 a 29 palavras cortadas no meio do texto, não parágrafos. Efeitos: um documento de Roterdã pode começar ou terminar no meio de uma frase e responde menos sozinho a uma necessidade; os documentos de Roterdã são bem mais curtos que os de Santos e Xangai, o que pesa no BM25 (normalização por tamanho). O grupo decidiu **manter o corpus congelado** e registrar a limitação, porque mudar os documentos de Roterdã mudaria os ids e invalidaria os 11 julgamentos que os usam.
+- **Limitação conhecida (Roterdã):** o artigo `Porto_de_Roterdão` é curto: 555 palavras e só 6 parágrafos com 10 palavras ou mais (conferido em 07/11/2026). Por isso os 20 documentos de Roterdã são janelas de 22 a 29 palavras cortadas no meio do texto, não parágrafos. Efeitos: um documento de Roterdã pode começar ou terminar no meio de uma frase e responde menos sozinho a uma necessidade; os documentos de Roterdã são bem mais curtos que os de Santos e Xangai, o que pesa no BM25 (normalização por tamanho). O grupo decidiu **manter o corpus congelado** e registrar a limitação, porque mudar os documentos de Roterdã mudaria os ids e invalidaria os 11 julgamentos que os usam. O problema já aparecia na Entrega 1 (Roterdã com 6 de 75 parágrafos); a correção prevista ali, acrescentar páginas sobre Roterdã, não foi feita.
 - **Corpus antigo × congelado:** as Entregas 1 a 4 usaram 75 parágrafos; o corpus congelado na Aula 05 tem 60 documentos (20 por porto).
 
 ## 4. Corpus
@@ -81,7 +84,7 @@
 ## 7. Registro por aula
 
 - **Aula 00** — teoria e Parte D individuais; repositório de treino `pi3-treino`; consolidado em `consolidado/`.
-- **Aula 01** (Entrega 1) — presentes: —; feito: coleta dos três artigos, parágrafos com ≥ 10 palavras, tokenização, TDM, busca booleana; produzido: 75 parágrafos, 1.946 termos; pendente: limpeza (Aula 03).
+- **Aula 01** (Entrega 1, relatório de 06/10/2026, os quatro integrantes como autores) — presentes: —; feito: coleta dos três artigos pela API, parágrafos com ≥ 10 palavras, tokenização, TDM, busca booleana; produzido: 75 documentos (Xangai 38, Santos 31, Roterdã 6), 10 a 237 tokens (média 70,7), 1.946 termos distintos em 5.304 tokens; Xangai com 51% dos documentos; os dez termos mais frequentes são gramaticais, exceto "porto"; pendente: limpeza e stopwords (Aula 03), equilibrar Roterdã com novas páginas, revisar trechos que não são prosa.
 - **Aula 02** (Entrega 2) — presentes: —; feito: TF-IDF, normalização, cosseno; produzido: ranking de "porto santos terminais" (`paragrafo-22`, `paragrafo-20` no topo).
 - **Aula 03** (Entrega 3) — presentes: —; feito: limpeza de acentos e pontuação, `stopwords-iso`; produzido: 1.428 termos; `porto` em 56 de 75 parágrafos.
 - **Aula 04** (Entrega 4) — presentes: —; feito: BM25 (IDF probabilístico, `bm25_doc`); produzido: BM25 num subcorpus de 8 parágrafos de Santos; pendente: o ranking exibido reaproveitou o do cosseno.
