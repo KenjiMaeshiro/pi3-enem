@@ -31,9 +31,9 @@ cfg <- list(
   lsa_k  = 50,                            # dimensoes do LSA: o melhor k testado (nao usado com "bm25")
   rrf_c  = 60,                            # constante da fusao RRF (nao usada com "bm25")
 
-  # --- Aula 08: reordenacao (nao decidido) -------------------------------
-  # rerank_k = 0,                           # quantos do topo o reordenador reordena (0 = nao)
-  # janela   = 3,                           # distancia maxima da proximidade ordenada
+  # --- Aula 08: reordenacao (decidido no Modulo 9, 08/11/2026) ---------
+  rerank_k = 3,                           # reordena o top-3 do BM25 (MAP dev 0,907 -> 0,847; ver ficha, secao 6)
+  janela   = 3,                           # distancia maxima da proximidade ordenada (2 e 3 empatam)
 
   # --- fim ----------------------------------------------------------------
   grupo = "Enem"                # ultimo campo, sem virgula depois
