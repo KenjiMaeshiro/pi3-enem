@@ -37,7 +37,7 @@
 - **Necessidades:** `estrutura/banco-de-dados/necessidades.csv` — 20 (q01 a q20), com consulta, necessidade em prosa, escopo e `conjunto`. Todas `dev`.
 - **Gabarito:** `estrutura/banco-de-dados/qrels_consenso.csv` — 49 pares (19 de grau 0, 10 de grau 1, 20 de grau 2), `juiz = consenso`. Era 29 pares até a Aula 06; os 20 novos estão em `registro_julgamentos_aula06D.csv` e `registro_julgamentos_aula06D_top3.csv`.
 - **Tamanho em palavras (corpus congelado):** média 57,83 · desvio 45,94 · mínimo 10 · mediana 38,5 · máximo 239. Por fonte: Santos 34 a 239 (mediana 73,5); Xangai 10 a 152 (mediana 40,5); Roterdã 22 a 29 (mediana 28).
-- **Vocabulário:** 1.946 termos brutos (Entregas 1 e 2, 75 parágrafos) · 1.428 depois da limpeza e das stopwords (Entrega 3) · 1.239 no `motor06` sobre o corpus congelado (limpeza com `translit`, sem stopwords).
+- **Vocabulário:** 1.946 termos brutos (Entregas 1 e 2, 75 parágrafos) · 1.428 depois da limpeza e das stopwords (Entrega 3) · 1.239 no `motor06` sobre o corpus congelado (limpeza com `translit`, sem stopwords) · 1.229 com a lista curta de stopwords da aula (decisão de 07/11/2026).
 - **Idioma, acentos, caixa, pontuação:** português; acentos removidos; tudo em minúsculas; pontuação vira espaço.
 - **Consultas de trabalho:** "porto santos terminais" (Entregas 2 a 4). Desde a Aula 05, as 20 consultas de `necessidades.csv`.
 
@@ -52,7 +52,7 @@
 | `corpus.csv`, necessidades, guia de julgamento, `qrels` | 05 | `estrutura/banco-de-dados/` | ok; qrels 29 pares de consenso; κ = 0,478 entre dois juízes em 6 itens (2ª rodada) |
 | métricas (P@k, MAP, MRR, nDCG) dos modelos | 5,5 | — (`metricas.R` e `rodar_metricas_corrigido.R` não estão no repositório) | ok |
 | realimentação (Rocchio, pseudo-realimentação) | 06 | `entrega-4.ipynb` (seções da Aula 06) | testado, desligado (`prf_k = 0`) |
-| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio`; pendente: `stopwords` |
+| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio` |
 
 ## 6. Decisões
 
@@ -60,7 +60,7 @@
 - Aula 01: documento — parágrafo com pelo menos 10 palavras, 20 por porto · `cfg$minimo = 200` ⚠ o `config.R` diz 200, mas o grupo filtrou por 10 **palavras**: conferir
 - Aula 02: consulta de trabalho "porto santos terminais" · sem campo
 - Aula 03: acentos e pontuação removidos, caixa baixa · `cfg$limpar = TRUE`, `cfg$acentos = "translit"`
-- Aula 03: stopwords — lista `stopwords-iso` em português, com stemming (`SnowballC`) no pipeline próprio · `cfg$stopwords` ⚠ não definido no `config.R`: pendente
+- Aula 03: stopwords — lista `stopwords-iso` em português, com stemming (`SnowballC`), no pipeline próprio das Entregas 3 e 4 · sem campo (substituída na Aula 06, ver abaixo)
 - Aula 04: BM25 com $k_1 = 1{,}2$ e $b = 0{,}75$, valores padrão da literatura · `cfg$k1 = 1.2`, `cfg$b = 0.75`
 - Aula 05: corpus congelado com 60 documentos, 20 por porto · `corpus.csv`
 - Aula 06: Roterdã em janelas de ~28 palavras, não parágrafos (artigo curto) — mantido como limitação conhecida, para não invalidar os 11 julgamentos com documentos de Roterdã · sem campo
@@ -75,6 +75,7 @@
 - Aula 06: sem conjunto de teste; k escolhido e relatado só no desenvolvimento · `necessidades.csv` (todas `dev`)
 - Aula 06: resultado — Rocchio na consulta q16 ($D_r$ = 2 relevantes, $D_{nr}$ vazio): AP completo 0,583 → 1,000; residual AP NA → NA (todos os relevantes estavam no top-5) · resultado, sem campo
 - Aula 06: pseudo-realimentação — **não usar**, porque o ganho de MAP é pequeno ou negativo e a PRF piora consultas que a base acerta (drift em q08 e q11) (MAP dev base 0,908 → k = 2 0,859 · k = 3 0,915 · k = 5 0,853, em 11 consultas; sem teste) · `cfg$prf_k = 0`, `cfg$rocchio = c(a = 1, b = 0.75, g = 0.15)`
+- Aula 06: stopwords do motor — **lista curta da aula** (de, o, a, e, um, por, como, que, da, do), porque mantém o cosseno e sobe o MAP do BM25 de 0,840 para 0,907; a `stopwords-iso` baixava o cosseno (0,908 → 0,870) e apagava termos do tema ("teus", "sao") · `cfg$stopwords = c("de", "o", "a", "e", "um", "por", "como", "que", "da", "do")`. Com ela, a tabela da PRF fica base 0,908 · k = 2 0,864 · k = 3 0,917 · k = 5 0,853, com as mesmas consultas piorando; a decisão de não usar a PRF se mantém.
 
 ## 7. Registro por aula
 
@@ -87,7 +88,7 @@
 - **Aula 5,5** (25/09/2026) — Pedro Santos; feito: métricas nos três modelos; produzido: MAP TF-IDF 0,985, BM25 0,894, booleano 0,227.
 - **Aula 06 teoria** (16/10/2026) — Lucas Murinelly Feliciano; Rocchio, residual, PRF no corpus do curso.
 - **Aula 07 teoria** (23 e 25/10/2026) — Lucas Murinelly Feliciano; LSA, RRF; aviso: `motor07.R` deu 404 no começo.
-- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Pendente: `cfg$stopwords`; conferir `cfg$minimo`; consolidado da Parte D.
+- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula. Pendente: conferir `cfg$minimo`; campos `—` desta ficha.
 
 ## 8. Estado do R
 
@@ -97,7 +98,7 @@
 
 <!-- estado-R:inicio -->
 ## Estado do R ao fim da sessão
-*gerado por `anexar_estado()` em 2026-11-08 00:34 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
+*gerado por `anexar_estado()` em 2026-11-08 00:52 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
 
 ### Objetos
 
@@ -106,7 +107,7 @@
 | `amostra` | data.frame | 10 × 4 | colunas: id, fonte, texto, n_palavras |
 | `avgdl` | numeric | 1 | 30.52 |
 | `b` | numeric | 1 | 0.75 |
-| `base` | numeric, nomeado | 60 | doc-e6e35237be5c264b 0.1374, doc-3920f91f96c67fe8 0.1296, doc-28a6b0ff0368e381 0.1246, doc-0279001a1a60b9ae 0.1122, doc-db8517f307829d06 0.1014, doc-65b06580ad1d7e3a 0.09977, ... |
+| `base` | numeric, nomeado | 60 | doc-e6e35237be5c264b 0.1383, doc-3920f91f96c67fe8 0.1325, doc-28a6b0ff0368e381 0.1252, doc-0279001a1a60b9ae 0.1129, doc-db8517f307829d06 0.1024, doc-65b06580ad1d7e3a 0.1023, ... |
 | `caminho_corpus` | character | 1 | corpus.csv |
 | `candidatos_por_consulta$q01` | character | 1 | doc-eb2430c7a98d9748 |
 | `candidatos_por_consulta$q02` | character | 1 | doc-543790f4a0744d86 |
@@ -132,6 +133,7 @@
 | `cfg$minimo` | numeric | 1 | 200 |
 | `cfg$limpar` | logical | 1 | TRUE |
 | `cfg$acentos` | character | 1 | translit |
+| `cfg$stopwords` | character | 10 | de, o, a, e, um, por, ... |
 | `cfg$k1` | numeric | 1 | 1.2 |
 | `cfg$b` | numeric | 1 | 0.75 |
 | `cfg$limiar` | numeric | 1 | 2 |
@@ -181,17 +183,17 @@
 | `idx_amostra` | integer | 10 | 49, 37, 1, 25, 10, 36, ... |
 | `idx_duplo` | integer | 6 | 29, 25, 1, 6, 13, 15 |
 | `ix$tokens` | list | 60 | elementos: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, doc-95b16c205f58c0a3, doc-e6e35237be5c264b, doc-11237fcb5e042bfd, doc-fec162740cbeb223, ... |
-| `ix$vocab` | character | 1239 | 000, 03, 1, 10, 100, 105, ... |
-| `ix$tf` | matrix | 1239 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
+| `ix$vocab` | character | 1229 | 000, 03, 1, 10, 100, 105, ... |
+| `ix$tf` | matrix | 1229 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
 | `ix$N` | integer | 1 | 60 |
-| `ix$df` | numeric, nomeado | 1239 | 000 1, 03 1, 1 1, 10 2, 100 1, 105 1, ... |
-| `ix$idf_tfidf` | numeric, nomeado | 1239 | 000 4.094, 03 4.094, 1 4.094, 10 3.401, 100 4.094, 105 4.094, ... |
-| `ix$w` | matrix | 1239 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
-| `ix$wn` | matrix | 1239 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
-| `ix$postings` | list | 1239 | elementos: o, porto, de, roterdao, portugues, europeu, ou, roterda, ... |
-| `ix$dl` | numeric, nomeado | 60 | doc-fecae25906e7b91c 28, doc-1dca3350bc9b993d 28, doc-01f9b4f10d310241 28, doc-09c80f2d1ecbbb22 28, doc-95b16c205f58c0a3 29, doc-e6e35237be5c264b 28, ... |
-| `ix$avgdl` | numeric | 1 | 57.83 |
-| `ix$idf_bm25` | numeric, nomeado | 1239 | 000 3.705, 03 3.705, 1 3.705, 10 3.195, 100 3.705, 105 3.705, ... |
+| `ix$df` | numeric, nomeado | 1229 | 000 1, 03 1, 1 1, 10 2, 100 1, 105 1, ... |
+| `ix$idf_tfidf` | numeric, nomeado | 1229 | 000 4.094, 03 4.094, 1 4.094, 10 3.401, 100 4.094, 105 4.094, ... |
+| `ix$w` | matrix | 1229 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
+| `ix$wn` | matrix | 1229 × 60 | linhas: 000, 03, 1, ... \| colunas: doc-fecae25906e7b91c, doc-1dca3350bc9b993d, doc-01f9b4f10d310241, doc-09c80f2d1ecbbb22, ... |
+| `ix$postings` | list | 1229 | elementos: porto, roterdao, portugues, europeu, ou, roterda, brasileiro, maior, ... |
+| `ix$dl` | numeric, nomeado | 60 | doc-fecae25906e7b91c 21, doc-1dca3350bc9b993d 20, doc-01f9b4f10d310241 22, doc-09c80f2d1ecbbb22 22, doc-95b16c205f58c0a3 25, doc-e6e35237be5c264b 20, ... |
+| `ix$avgdl` | numeric | 1 | 42.52 |
+| `ix$idf_bm25` | numeric, nomeado | 1229 | 000 3.705, 03 3.705, 1 3.705, 10 3.195, 100 3.705, 105 3.705, ... |
 | `ix_aula$tokens` | list | 8 | elementos: d1, d2, d3, d4, d5, d6, d7, d8 |
 | `ix_aula$vocab` | character | 45 | a, acelera, aprendizado, avaliacao, bm25, busca, ... |
 | `ix_aula$tf` | matrix | 45 × 8 | linhas: a, acelera, aprendizado, ... \| colunas: d1, d2, d3, d4, ... |
@@ -225,8 +227,8 @@
 | `n_qrels` | integer | 1 | 49 |
 | `n_textos_duplicados` | integer | 1 | 0 |
 | `nec` | data.frame | 20 × 5 | colunas: consulta, texto_consulta, necessidade, escopo, conjunto |
-| `novo` | numeric, nomeado | 60 | doc-3920f91f96c67fe8 0.7834, doc-28a6b0ff0368e381 0.6199, doc-6a4c8a90c1269b98 0.1605, doc-87eae23e5a597432 0.118, doc-0279001a1a60b9ae 0.1174, doc-65b06580ad1d7e3a 0.1122, ... |
-| `novo_v` | numeric, nomeado | 60 | doc-3920f91f96c67fe8 0.7834, doc-28a6b0ff0368e381 0.6199, doc-6a4c8a90c1269b98 0.1605, doc-87eae23e5a597432 0.118, doc-0279001a1a60b9ae 0.1174, doc-65b06580ad1d7e3a 0.1122, ... |
+| `novo` | numeric, nomeado | 60 | doc-3920f91f96c67fe8 0.7764, doc-28a6b0ff0368e381 0.6211, doc-6a4c8a90c1269b98 0.1459, doc-0279001a1a60b9ae 0.1072, doc-db8517f307829d06 0.1045, doc-e6e35237be5c264b 0.1005, ... |
+| `novo_v` | numeric, nomeado | 60 | doc-3920f91f96c67fe8 0.7764, doc-28a6b0ff0368e381 0.6211, doc-6a4c8a90c1269b98 0.1459, doc-0279001a1a60b9ae 0.1072, doc-db8517f307829d06 0.1045, doc-e6e35237be5c264b 0.1005, ... |
 | `novos` | data.frame | 4 × 4 | colunas: consulta, documento, grau, juiz |
 | `nv` | data.frame | 4 × 4 | colunas: consulta, documento, grau, juiz |
 | `objetos` | character | 10 | corpus, tdm, tf, w, dl, avgdl, ... |
@@ -237,7 +239,7 @@
 | `q` | character | 1 | q16 |
 | `q_aula` | numeric, nomeado | 45 | a 0, acelera 0, aprendizado 0, avaliacao 0, bm25 0, busca 0, ... |
 | `q_palavras` | numeric, nomeado | 5 | 0% 10, 25% 28, 50% 38.5, 75% 78, 100% 239 |
-| `q0` | numeric, nomeado | 1239 | 000 0, 03 0, 1 0, 10 0, 100 0, 105 0, ... |
+| `q0` | numeric, nomeado | 1229 | 000 0, 03 0, 1 0, 10 0, 100 0, 105 0, ... |
 | `qc` | data.frame | 49 × 4 | colunas: consulta, documento, grau, juiz |
 | `qid` | character | 1 | q20 |
 | `qrels$q01` | numeric, nomeado | 3 | doc-eb2430c7a98d9748 2, doc-54eb3169714cc9ef 0, doc-d5e0c45cb91c9866 0 |
