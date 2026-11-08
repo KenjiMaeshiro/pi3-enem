@@ -23,9 +23,9 @@ cfg <- list(
   limiar = 2,                   # Aula 5,5: grau >= 2 conta como relevante
   juizes = "consenso",          # gabarito de consenso (qrels_consenso.csv)
 
-  # --- Aula 06: realimentacao (DECISAO DO GRUPO, Modulo 9) ----------------
-  # prf_k   = 0,                            # 0 = sem pseudo-realimentacao; k = usa os top-k
-  # rocchio = c(a = 1, b = 0.75, g = 0.15), # pesos do Rocchio
+  # --- Aula 06: realimentacao (decidido no Modulo 9, 07/11/2026) ---------
+  prf_k   = 0,                            # 0 = sem pseudo-realimentacao: ganho pequeno no dev e drift em q08/q11
+  rocchio = c(a = 1, b = 0.75, g = 0.15), # pesos do Rocchio (so valem se prf_k > 0)
 
   # --- Aula 07: LSA e busca hibrida (nao decidido) -----------------------
   # modelo = "bm25",                        # "bm25", "lsa" ou "hibrido"
