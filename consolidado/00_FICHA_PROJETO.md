@@ -37,7 +37,7 @@
 - **Necessidades:** `estrutura/banco-de-dados/necessidades.csv` — 20 (q01 a q20), com consulta, necessidade em prosa, escopo e `conjunto`. Todas `dev`.
 - **Gabarito:** `estrutura/banco-de-dados/qrels_consenso.csv` — 49 pares (19 de grau 0, 10 de grau 1, 20 de grau 2), `juiz = consenso`. Era 29 pares até a Aula 06; os 20 novos estão em `registro_julgamentos_aula06D.csv` e `registro_julgamentos_aula06D_top3.csv`.
 - **Tamanho em palavras (corpus congelado):** média 57,83 · desvio 45,94 · mínimo 10 · mediana 38,5 · máximo 239. Por fonte: Santos 34 a 239 (mediana 73,5); Xangai 10 a 152 (mediana 40,5); Roterdã 22 a 29 (mediana 28).
-- **Vocabulário:** 1.946 termos brutos (Entregas 1 e 2, 75 parágrafos) · 1.428 depois da limpeza e das stopwords (Entrega 3) · 1.239 no `motor06` sobre o corpus congelado (limpeza com `translit`, sem stopwords).
+- **Vocabulário:** 1.946 termos brutos (Entregas 1 e 2, 75 parágrafos) · 1.428 depois da limpeza e das stopwords (Entrega 3) · 1.239 no `motor06` sobre o corpus congelado (limpeza com `translit`, sem stopwords) · 1.229 com a lista curta de stopwords da aula (decisão de 07/11/2026).
 - **Idioma, acentos, caixa, pontuação:** português; acentos removidos; tudo em minúsculas; pontuação vira espaço.
 - **Consultas de trabalho:** "porto santos terminais" (Entregas 2 a 4). Desde a Aula 05, as 20 consultas de `necessidades.csv`.
 
@@ -52,7 +52,7 @@
 | `corpus.csv`, necessidades, guia de julgamento, `qrels` | 05 | `estrutura/banco-de-dados/` | ok; qrels 29 pares de consenso; κ = 0,478 entre dois juízes em 6 itens (2ª rodada) |
 | métricas (P@k, MAP, MRR, nDCG) dos modelos | 5,5 | — (`metricas.R` e `rodar_metricas_corrigido.R` não estão no repositório) | ok |
 | realimentação (Rocchio, pseudo-realimentação) | 06 | `entrega-4.ipynb` (seções da Aula 06) | testado, desligado (`prf_k = 0`) |
-| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio`; pendente: `stopwords` |
+| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio` |
 
 ## 6. Decisões
 
@@ -60,7 +60,7 @@
 - Aula 01: documento — parágrafo com pelo menos 10 palavras, 20 por porto · `cfg$minimo = 200` ⚠ o `config.R` diz 200, mas o grupo filtrou por 10 **palavras**: conferir
 - Aula 02: consulta de trabalho "porto santos terminais" · sem campo
 - Aula 03: acentos e pontuação removidos, caixa baixa · `cfg$limpar = TRUE`, `cfg$acentos = "translit"`
-- Aula 03: stopwords — lista `stopwords-iso` em português, com stemming (`SnowballC`) no pipeline próprio · `cfg$stopwords` ⚠ não definido no `config.R`: pendente
+- Aula 03: stopwords — lista `stopwords-iso` em português, com stemming (`SnowballC`), no pipeline próprio das Entregas 3 e 4 · sem campo (substituída na Aula 06, ver abaixo)
 - Aula 04: BM25 com $k_1 = 1{,}2$ e $b = 0{,}75$, valores padrão da literatura · `cfg$k1 = 1.2`, `cfg$b = 0.75`
 - Aula 05: corpus congelado com 60 documentos, 20 por porto · `corpus.csv`
 - Aula 06: Roterdã em janelas de ~28 palavras, não parágrafos (artigo curto) — mantido como limitação conhecida, para não invalidar os 11 julgamentos com documentos de Roterdã · sem campo
@@ -75,6 +75,7 @@
 - Aula 06: sem conjunto de teste; k escolhido e relatado só no desenvolvimento · `necessidades.csv` (todas `dev`)
 - Aula 06: resultado — Rocchio na consulta q16 ($D_r$ = 2 relevantes, $D_{nr}$ vazio): AP completo 0,583 → 1,000; residual AP NA → NA (todos os relevantes estavam no top-5) · resultado, sem campo
 - Aula 06: pseudo-realimentação — **não usar**, porque o ganho de MAP é pequeno ou negativo e a PRF piora consultas que a base acerta (drift em q08 e q11) (MAP dev base 0,908 → k = 2 0,859 · k = 3 0,915 · k = 5 0,853, em 11 consultas; sem teste) · `cfg$prf_k = 0`, `cfg$rocchio = c(a = 1, b = 0.75, g = 0.15)`
+- Aula 06: stopwords do motor — **lista curta da aula** (de, o, a, e, um, por, como, que, da, do), porque mantém o cosseno e sobe o MAP do BM25 de 0,840 para 0,907; a `stopwords-iso` baixava o cosseno (0,908 → 0,870) e apagava termos do tema ("teus", "sao") · `cfg$stopwords = c("de", "o", "a", "e", "um", "por", "como", "que", "da", "do")`. Com ela, a tabela da PRF fica base 0,908 · k = 2 0,864 · k = 3 0,917 · k = 5 0,853, com as mesmas consultas piorando; a decisão de não usar a PRF se mantém.
 
 ## 7. Registro por aula
 
@@ -87,7 +88,7 @@
 - **Aula 5,5** (25/09/2026) — Pedro Santos; feito: métricas nos três modelos; produzido: MAP TF-IDF 0,985, BM25 0,894, booleano 0,227.
 - **Aula 06 teoria** (16/10/2026) — Lucas Murinelly Feliciano; Rocchio, residual, PRF no corpus do curso.
 - **Aula 07 teoria** (23 e 25/10/2026) — Lucas Murinelly Feliciano; LSA, RRF; aviso: `motor07.R` deu 404 no começo.
-- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Pendente: `cfg$stopwords`; conferir `cfg$minimo`; consolidado da Parte D.
+- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula. Pendente: conferir `cfg$minimo`; campos `—` desta ficha.
 
 ## 8. Estado do R
 

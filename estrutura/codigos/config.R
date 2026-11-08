@@ -12,8 +12,7 @@ cfg <- list(
   # --- Aula 03: limpeza e stopwords ---------------------------------------
   limpar    = TRUE,             # usar a limpeza da Aula 03
   acentos   = "translit",       # Aula 03 removeu acentos e pontuacao (i, c, a...)
-  # stopwords = c(...),         # ⚠ lista stopwords-iso pt (Aula 03), pacote stopwords; colar do R:
-                                #   stopwords("pt", source = "stopwords-iso")
+  stopwords = c("de", "o", "a", "e", "um", "por", "como", "que", "da", "do"),  # lista curta da aula (07/11/2026): mantem o cosseno, BM25 MAP 0,840 -> 0,907
 
   # --- Aula 04: BM25 ------------------------------------------------------
   k1 = 1.2,                     # Aula 04: valor padrao da literatura
