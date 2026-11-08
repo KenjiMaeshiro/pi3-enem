@@ -7,7 +7,7 @@
 
 cfg <- list(
   # --- Aula 01: o que e um documento ------------------------------------
-  minimo = 200,                 # ⚠ o grupo filtrou por 10 PALAVRAS (Aula 01), nao por caracteres: confirmar
+  minimo = 10,                  # PALAVRAS, nao caracteres: o corpus.csv usou paragrafos com >= 10 palavras (Aula 01; decidido em 07/11/2026). Nao e usado pelo motor06: o corpus esta congelado
 
   # --- Aula 03: limpeza e stopwords ---------------------------------------
   limpar    = TRUE,             # usar a limpeza da Aula 03

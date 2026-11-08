@@ -57,7 +57,7 @@
 ## 6. Decisões
 
 - Aula 01: tema — os portos de Santos, Xangai e Roterdã; fonte — Wikipédia (CC BY-SA) · sem campo
-- Aula 01: documento — parágrafo com pelo menos 10 palavras, 20 por porto · `cfg$minimo = 200` ⚠ o `config.R` diz 200, mas o grupo filtrou por 10 **palavras**: conferir
+- Aula 01: documento — parágrafo com pelo menos 10 palavras, 20 por porto · `cfg$minimo = 10` (em **palavras**, não caracteres como no modelo da disciplina; corrigido em 07/11/2026 — o `config.R` dizia 200; o campo não é usado pelo motor, porque o corpus está congelado)
 - Aula 02: consulta de trabalho "porto santos terminais" · sem campo
 - Aula 03: acentos e pontuação removidos, caixa baixa · `cfg$limpar = TRUE`, `cfg$acentos = "translit"`
 - Aula 03: stopwords — lista `stopwords-iso` em português, com stemming (`SnowballC`), no pipeline próprio das Entregas 3 e 4 · sem campo (substituída na Aula 06, ver abaixo)
@@ -88,7 +88,7 @@
 - **Aula 5,5** (25/09/2026) — Pedro Santos; feito: métricas nos três modelos; produzido: MAP TF-IDF 0,985, BM25 0,894, booleano 0,227.
 - **Aula 06 teoria** (16/10/2026) — Lucas Murinelly Feliciano; Rocchio, residual, PRF no corpus do curso.
 - **Aula 07 teoria** (23 e 25/10/2026) — Lucas Murinelly Feliciano; LSA, RRF; aviso: `motor07.R` deu 404 no começo.
-- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula. Pendente: conferir `cfg$minimo`; campos `—` desta ficha.
+- **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula; `cfg$minimo = 10` (palavras). Pendente: campos `—` desta ficha.
 
 ## 8. Estado do R
 
@@ -98,7 +98,7 @@
 
 <!-- estado-R:inicio -->
 ## Estado do R ao fim da sessão
-*gerado por `anexar_estado()` em 2026-11-08 00:52 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
+*gerado por `anexar_estado()` em 2026-11-08 00:56 · R version 4.6.1 (2026-06-24) · motor06 v2 2026-10-08 · não edite à mão*
 
 ### Objetos
 
@@ -130,7 +130,7 @@
 | `candidatos_por_consulta$q19` | character | 1 | doc-fecae25906e7b91c |
 | `candidatos_por_consulta$q20` | character | 2 | doc-fecae25906e7b91c, doc-543790f4a0744d86 |
 | `cc` | data.frame | 60 × 3 | colunas: texto, fonte, id |
-| `cfg$minimo` | numeric | 1 | 200 |
+| `cfg$minimo` | numeric | 1 | 10 |
 | `cfg$limpar` | logical | 1 | TRUE |
 | `cfg$acentos` | character | 1 | translit |
 | `cfg$stopwords` | character | 10 | de, o, a, e, um, por, ... |
