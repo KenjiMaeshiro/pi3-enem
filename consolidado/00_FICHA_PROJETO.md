@@ -1,7 +1,7 @@
 # Ficha do projeto — grupo Enem
 
 *Reconstruída na Aula 06 (Parte D) em 07/11/2026: a ficha original se perdeu. Fontes: consolidados do repositório (`consolidado/aula00` a `aula07`), guias, `corpus.csv`, `necessidades.csv`, `qrels_consenso.csv`, `config.R`, o notebook `entrega-4.ipynb` e, em 08/11/2026, o relatório da Entrega 1 (`entregas/entrega-1.pdf`). O que nenhum registro confirma está como `—`; o grupo confere seção por seção.*
-*Última atualização: Aula 06 Parte D, 07/11/2026, motor06.*
+*Última atualização: Aula 07 Parte D, 08/11/2026, motor07.*
 
 ---
 
@@ -55,7 +55,8 @@
 | `corpus.csv`, necessidades, guia de julgamento, `qrels` | 05 | `estrutura/banco-de-dados/` | ok; qrels 29 pares de consenso; κ = 0,478 entre dois juízes em 6 itens (2ª rodada) |
 | métricas (P@k, MAP, MRR, nDCG) dos modelos | 5,5 | — (`metricas.R` e `rodar_metricas_corrigido.R` não estão no repositório) | ok |
 | realimentação (Rocchio, pseudo-realimentação) | 06 | `entrega-4.ipynb` (seções da Aula 06) | testado, desligado (`prf_k = 0`) |
-| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio` |
+| LSA e busca híbrida | 07 | `entrega-4.ipynb` (seções da Aula 07) | testado, não usado (`modelo = "bm25"`) |
+| **decisões para o R** | — | `estrutura/codigos/config.R` | campos: `minimo`, `grupo`, `limpar`, `acentos`, `stopwords`, `k1`, `b`, `limiar`, `juizes`, `prf_k`, `rocchio`, `modelo`, `lsa_k`, `rrf_c` |
 
 ## 6. Decisões
 
@@ -80,6 +81,9 @@
 - Aula 06: pseudo-realimentação — **não usar**, porque o ganho de MAP é pequeno ou negativo e a PRF piora consultas que a base acerta (drift em q08 e q11) (MAP dev base 0,908 → k = 2 0,859 · k = 3 0,915 · k = 5 0,853, em 11 consultas; sem teste) · `cfg$prf_k = 0`, `cfg$rocchio = c(a = 1, b = 0.75, g = 0.15)`
 - Aula 06: análise do drift (tarefa do grupo) — consulta q11, escolhida porque o comércio exterior é um dos papéis centrais dos portos estudados. A consulta original ficou com três termos (comercio, exterior, porto), porque "exportacoes" e "importacoes" não aparecem no corpus. Com a PRF ($k = 3$) ela passou a ter 199 termos; os mais pesados (britanico, 1842, imperio, tratado, guerra, hong, kong, poder) vieram dos dois relevantes (`3920f9`, `a3276b`) e do documento de grau 1 (`56713a`), e tratam da evolução de Xangai (Guerra do Ópio, Tratado de 1842, ocupação japonesa), não de exportação ou importação. A consulta foi puxada da necessidade para a história de Xangai; o `56713a`, que trata quase só da guerra de 1937, é o que mais combina com os termos novos e passou à frente do relevante `a3276b` (AP 1,000 → 0,833). Isso confirma a decisão de não usar a PRF: quando os primeiros documentos falam de outro assunto, mesmo sendo relevantes, a PRF leva a consulta para esse assunto, e o motor não tem como perceber o desvio · resultado, sem campo
 - Aula 06: stopwords do motor — **lista curta da aula** (de, o, a, e, um, por, como, que, da, do), porque mantém o cosseno e sobe o MAP do BM25 de 0,840 para 0,907; a `stopwords-iso` baixava o cosseno (0,908 → 0,870) e apagava termos do tema ("teus", "sao") · `cfg$stopwords = c("de", "o", "a", "e", "um", "por", "como", "que", "da", "do")`. Com ela, a tabela da PRF fica base 0,908 · k = 2 0,864 · k = 3 0,917 · k = 5 0,853, com as mesmas consultas piorando; a decisão de não usar a PRF se mantém.
+- Aula 07: resultado — LSA × BM25 na consulta q01 ($k = 20$, 68,5% da energia): 3 documentos em comum nos top-5; só o LSA trouxe o `37b06b`, sem nenhuma palavra da consulta, que fala do transporte de mercadorias pelo porto (lido pelo grupo como ganho de sentido); só o BM25 trouxe o `770191`, pelas palavras exatas "movimentacao" e "cargas", mas ele só conta a história das operações · resultado, sem campo
+- Aula 07: modelo do motor = **bm25**, porque é o mais confiável: o LSA só passa do BM25 com $k = 50$, que é quase a matriz inteira (60 documentos) e ganha em apenas 2 de 11 consultas (q08, q14); com $k = 10$ ou $20$ o LSA perde em 8 de 11 (MAP dev BM25 0,907; LSA $k = 10$/$20$/$50$ 0,430/0,518/0,944; híbrido 0,683/0,787/0,915; sem teste; ressalva: 11 consultas) · `cfg$modelo = "bm25"`, `cfg$lsa_k = 50`, `cfg$rrf_c = 60` (registram o que foi testado; não usados com "bm25")
+- Aula 07: análise LSA × BM25 (tarefa do grupo) — **onde o LSA ganhou, q14** ($k = 50$, AP 0,312 → 0,556): o BM25 pôs em 1º o `0216e3`, que não fala de acidentes (grau 0), e o relevante `be66af` em 2º; o LSA inverteu, pondo em 1º o `be66af`, que narra o incêndio de 2015 nos tanques de combustíveis da Alemoa, porque olha o assunto do texto inteiro (incêndio, tanques, combustíveis) e não só quantas vezes as palavras da consulta aparecem. **Onde o LSA perdeu, q01** ($k = 20$, AP 1,000 → 0,500): o LSA pôs em 1º o `54eb31` (grau 0), um texto de 12 palavras sobre o terminal Baoshan, da SIPG, que só tem "cargas" em comum com a consulta e não explica por que as cargas são economicamente importantes, só afirma detalhes do terminal. Com poucas dimensões, o LSA aproxima textos curtos do mesmo assunto geral (cargas, terminais) e perde a especificidade da necessidade. Isso sustenta a decisão de ficar com o BM25 · resultado, sem campo
 
 ## 7. Registro por aula
 
@@ -93,6 +97,7 @@
 - **Aula 06 teoria** (16/10/2026) — Lucas Murinelly Feliciano; Rocchio, residual, PRF no corpus do curso.
 - **Aula 07 teoria** (23 e 25/10/2026) — Lucas Murinelly Feliciano; LSA, RRF; aviso: `motor07.R` deu 404 no começo.
 - **Aula 06 Parte D** (07/11/2026) — presentes: Pedro Santos; Lucas Murinelly julgou q08, q10, q18 e q11; Pedro julgou os 16 pares do top-3. Feito: Módulo 7 (Rocchio em q16), Módulo 8 (PRF nas 11 consultas dev) e Módulo 9 (decisão: sem PRF); gabarito ampliado; notebook limpo; ficha reconstruída. Produzido: `qrels_consenso.csv` com 49 pares e os registros de julgamento (PR KenjiMaeshiro/pi3-enem#1); `config.R` com `prf_k = 0` e `rocchio`. Decidido depois: `cfg$stopwords` = lista curta da aula; `cfg$minimo = 10` (palavras). Tarefa do grupo (análise do drift em q11) feita em 08/11/2026, na seção 6. Pendente: campos `—` desta ficha.
+- **Aula 07 Parte D** (08/11/2026) — presentes: Pedro Santos (conduziu); demais: —; digitou: o tutor, a pedido do grupo (R local e Colab). Feito: Módulo 7 (LSA $k = 20$ × BM25 em q01, lendo os textos), Módulo 8 (BM25, LSA e híbrido com $k$ = 10, 20, 50 nas 11 consultas dev; sem teste) e Módulo 9 (decisão: BM25); tarefa do grupo (q14 ganhou, q01 perdeu), na seção 6. Produzido: `config.R` com `modelo = "bm25"`, `lsa_k = 50`, `rrf_c = 60`; seções da Aula 07 no `entrega-4.ipynb`. Pendente: nenhum para a Aula 08 além dos campos `—` desta ficha; `prf_k = 0`, então não há PRF × LSA a decidir.
 
 ## 8. Estado do R
 

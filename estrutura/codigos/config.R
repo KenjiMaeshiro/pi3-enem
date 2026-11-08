@@ -26,10 +26,10 @@ cfg <- list(
   prf_k   = 0,                            # 0 = sem pseudo-realimentacao: ganho pequeno no dev e drift em q08/q11
   rocchio = c(a = 1, b = 0.75, g = 0.15), # pesos do Rocchio (so valem se prf_k > 0)
 
-  # --- Aula 07: LSA e busca hibrida (nao decidido) -----------------------
-  # modelo = "bm25",                        # "bm25", "lsa" ou "hibrido"
-  # lsa_k  = 20,                            # dimensoes do LSA
-  # rrf_c  = 60,                            # constante da fusao RRF
+  # --- Aula 07: LSA e busca hibrida (decidido no Modulo 9, 08/11/2026) --
+  modelo = "bm25",                        # "bm25", "lsa" ou "hibrido": BM25, o mais confiavel (LSA so passa com k = 50)
+  lsa_k  = 50,                            # dimensoes do LSA: o melhor k testado (nao usado com "bm25")
+  rrf_c  = 60,                            # constante da fusao RRF (nao usada com "bm25")
 
   # --- Aula 08: reordenacao (nao decidido) -------------------------------
   # rerank_k = 0,                           # quantos do topo o reordenador reordena (0 = nao)
