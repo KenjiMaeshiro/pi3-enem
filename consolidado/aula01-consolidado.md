@@ -1,289 +1,231 @@
-# Entrega 1 — Mineração de Textos
+# Aula 01 — Recuperação de Informação: do problema da busca ao nosso motor
 
-## Objetivo
+## Identificação e progresso
 
-Nesta entrega foi realizada uma etapa inicial de **mineração de textos**, utilizando artigos da Wikipédia relacionados a três portos: **Porto de Santos, Porto de Xangai e Porto de Roterdão**.
+- **Aula:** 01 — Recuperação de Informação
+- **Ambiente de prática:** R no Google Colab
+- **Motor utilizado:** `motor01 v1 2026-10-01`
+- **Módulos concluídos:** 10 de 10
+- **Avaliação final:** 10 acertos em 10 questões
+- **Estado do R:** a ser anexado pelo Colab ao final, usando `anexar_estado()`.
 
-O objetivo foi obter os textos, organizar os parágrafos, realizar uma tokenização simples, construir um vocabulário, analisar a frequência dos termos, criar uma matriz termo-documento e realizar buscas booleanas.
+## 1. O que aprendi
 
-## Importação de bibliotecas e dados
+### Recuperação de Informação (RI)
 
-Foram utilizadas as bibliotecas `tidytext`, `httr2`, `stringr` e `dplyr`.
+Uma consulta tradicional a banco de dados recupera registros que atendem aos critérios definidos. Um sistema de Recuperação de Informação busca documentos potencialmente relevantes e pode ordená-los segundo uma estimativa de relevância.
 
-- `httr2`: utilizada para realizar as requisições à API da Wikipédia.
-- `stringr`: utilizada para manipulação e contagem de caracteres/palavras.
-- `dplyr`: utilizada para organização e transformação dos dados.
-- `tidytext`: incluída como biblioteca de apoio à mineração de texto.
+Em um sistema com muitos documentos, podemos dividir o processamento em duas etapas:
 
-```r
-install.packages(c("tidytext", "stringr", "dplyr"))
+- **Retrieve:** recupera rapidamente um conjunto menor de candidatos.
+- **Rerank:** reavalia e ordena os candidatos usando um método mais sofisticado, evitando aplicá-lo a todos os documentos.
 
-library(tidytext)
-library(httr2)
-library(stringr)
-library(dplyr)
-```
+### Documentos e indexação no R
 
-A função `baixar_sites()` realiza uma requisição à API da Wikipédia e retorna somente o texto do artigo. Foram utilizados os seguintes títulos:
-
-- `Porto_de_Santos`
-- `Porto_de_Xangai`
-- `Porto_de_Roterdão`
+Os documentos foram organizados em um vetor nomeado `docs`, com identificadores de `d1` a `d8`.
 
 ```r
-baixar_sites <- function(titulo)
-{
-  request("https://pt.wikipedia.org/w/api.php") |>
-    req_url_query(
-      action = "query",
-      prop = "extracts",
-      explaintext = 1,
-      format = "json",
-      redirects = 1,
-      titles = titulo
-    ) |>
-    req_perform() |>
-    resp_body_json() |>
-    (\(r) r$query$pages[[1]]$extract)()
-}
-
-titulos <- c(
-  "Porto_de_Santos",
-  "Porto_de_Xangai",
-  "Porto_de_Roterdão"
-)
-
-docs <- lapply(titulos, baixar_sites)
+length(docs)       # 8 documentos
+docs["d5"]        # retorna vetor com nome d5
+docs[["d5"]]      # retorna o texto sem preservar o nome
 ```
 
-Os textos retornados foram armazenados em uma lista e posteriormente organizados em um corpus.
+Em R, os índices numéricos começam em 1. O operador `[` preserva o nome de um elemento de vetor nomeado; `[[` extrai seu conteúdo.
 
-## Organização do corpus
+### Tokenização, vocabulário e frequências
 
-Os textos foram separados em parágrafos utilizando a quebra de linha como separador. Em seguida, os parágrafos vazios ou formados apenas por espaços foram removidos.
+A função `tokenizar()` transforma o texto em termos normalizados. Para o corpus da aula:
 
 ```r
-corpus <- lapply(seq_along(docs), function(i) {
+tokens <- lapply(docs, tokenizar)
+vocab <- sort(unique(unlist(tokens)))
+freq <- table(unlist(tokens))
 
-  paragrafos <- unlist(
-    strsplit(docs[[i]], "\n")
-  )
-
-  paragrafos <- paragrafos[
-    nchar(trimws(paragrafos)) > 0
-  ]
-
-  data.frame(
-    paragrafo = paragrafos
-  )
-})
-
-corpus <- bind_rows(corpus)
+length(vocab)                    # 45 termos distintos
+sum(lengths(tokens))            # 64 ocorrências no total
+sort(freq, decreasing = TRUE)[1:6]
 ```
 
-Depois disso, os três conjuntos de textos foram unidos em uma única estrutura, e cada parágrafo recebeu um identificador no formato:
+As seis palavras mais frequentes observadas foram:
 
-`paragrafo1`, `paragrafo2`, `paragrafo3`, ...
-
-```r
-corpus$texto <- paste0(
-  "paragrafo",
-  1:nrow(corpus)
-)
-```
-
-Essa organização permitiu tratar cada parágrafo como um documento individual durante as etapas seguintes.
-
-## Limpeza dos textos
-
-Antes da tokenização, foi feita uma filtragem dos parágrafos com base na quantidade de palavras.
-
-Foi criada temporariamente a variável `n_palavras`, que conta os elementos separados por espaços. Foram mantidos somente os parágrafos que possuem **10 palavras ou mais**.
-
-Após a filtragem, a variável auxiliar foi removida.
-
-```r
-corpus <- corpus |>
-  mutate(
-    n_palavras = str_count(paragrafo, "\\S+")
-  ) |>
-  filter(n_palavras >= 10) |>
-  select(-n_palavras)
-```
-
-Essa etapa reduz a presença de trechos muito curtos, que poderiam contribuir pouco para as análises de frequência e busca.
-
-## Tokenização
-
-A tokenização foi realizada por meio da função `tokenizar()`.
-
-O processo possui duas etapas principais:
-
-1. Transformação de todo o texto para letras minúsculas;
-2. Separação do texto em tokens utilizando espaços em branco.
-
-```r
-tokenizar <- function(texto)
-{
-  texto <- tolower(texto)
-
-  unlist(
-    strsplit(texto, "\\s+")
-  )
-}
-
-tokens <- lapply(
-  corpus$paragrafo,
-  tokenizar
-)
-
-names(tokens) <- paste0(
-  "paragrafo-",
-  1:nrow(corpus)
-)
-```
-
-Assim, palavras que aparecem com letras maiúsculas e minúsculas passam a ser consideradas como o mesmo termo.
-
-Como a separação foi feita apenas por espaços, alguns sinais de pontuação permaneceram associados aos tokens. Por exemplo, podem aparecer termos como `santos,` e `santos` como tokens diferentes.
-
-## Criação do vocabulário e frequência dos termos
-
-Após a tokenização, todos os tokens foram reunidos para formar o vocabulário.
-
-O vocabulário foi criado removendo os termos repetidos e organizando os termos em ordem alfabética.
-
-```r
-vocab <- sort(
-  unique(unlist(tokens))
-)
-
-length(vocab)
-```
-
-O resultado foi um vocabulário com:
-
-**1.946 termos únicos.**
-
-Também foi calculada a frequência total de cada token no corpus. Os 10 termos mais frequentes foram:
-
-```r
-frequencia <- table(
-  unlist(tokens)
-)
-
-freq_sorted <- sort(
-  frequencia,
-  decreasing = TRUE
-)
-
-top10 <- head(
-  freq_sorted,
-  10
-)
-
-print(top10)
-```
-
-| Termo | Frequência |
+| Termo | Frequência total |
 |---|---:|
-| `de` | 442 |
-| `o` | 189 |
-| `a` | 181 |
-| `e` | 153 |
-| `do` | 127 |
-| `porto` | 92 |
-| `da` | 88 |
-| `em` | 86 |
-| `para` | 55 |
-| `um` | 53 |
+| de | 6 |
+| a | 5 |
+| documentos | 4 |
+| e | 3 |
+| busca | 2 |
+| modelo | 2 |
 
-É possível observar que os termos mais frequentes são, em sua maioria, palavras muito comuns da língua portuguesa, como preposições, artigos e conjunções. O termo relacionado diretamente ao tema, `porto`, também apresentou frequência elevada, aparecendo **92 vezes**.
+**Distinção importante:** frequência total é o número de ocorrências; tamanho do vocabulário é o número de termos diferentes. Adicionar `"porto de santos"` ao corpus eleva o vocabulário de 45 para 47 termos, pois `porto` e `santos` são novos. Adicionar `"busca busca busca"` eleva a frequência de `busca` de 2 para 5, mas mantém o vocabulário com 45 termos.
 
-## Matriz termo-documento
+### Matriz termo-documento (TDM)
 
-Foi criada uma **matriz termo-documento (TDM)** para representar a quantidade de vezes que cada termo aparece em cada parágrafo.
-
-Na matriz:
-
-- cada **linha** representa um termo do vocabulário;
-- cada **coluna** representa um parágrafo;
-- cada célula representa a quantidade de ocorrências daquele termo no respectivo parágrafo.
+Na matriz termo-documento, as **linhas** são termos, as **colunas** são documentos e cada célula registra quantas vezes o termo aparece no documento.
 
 ```r
-tdm <- sapply(tokens, function(t)
-  as.integer(
-    table(
-      factor(t, levels = vocab)
-    )
-  )
-)
-
+tdm <- sapply(tokens, function(tk) {
+  as.integer(table(factor(tk, levels = vocab)))
+})
 rownames(tdm) <- vocab
 
-dim(tdm)
+dim(tdm)               # 45 8
+tdm["a", "d7"]         # 2
+tdm["de", "d3"]        # 2
+tdm["modelo", ]        # d2 e d3: 1; demais: 0
+colSums(tdm)           # 7 9 9 6 9 8 9 7
 ```
 
-A dimensão obtida foi:
+`factor(tk, levels = vocab)` assegura que todos os documentos tenham 45 posições, inclusive zeros para termos ausentes. Sem comprimentos iguais, `sapply()` não conseguiria simplificar esses vetores em uma matriz regular.
 
-**1.946 × 75**
+### Busca booleana
 
-Portanto, a matriz possui **1.946 termos** e **75 documentos/parágrafos** após o tratamento realizado.
-
-## Busca booleana
-
-Foi criada a função `busca_booleana()`, responsável por verificar em quais documentos um determinado termo aparece.
-
-A função recebe um termo e a matriz termo-documento. Caso o termo exista no vocabulário, são retornados os documentos em que sua frequência é maior que zero.
+A busca booleana retorna documentos que contêm um termo, sem ordenar os resultados por relevância.
 
 ```r
 busca_booleana <- function(termo, tdm) {
-
-  if (!termo %in% rownames(tdm))
-    return(character(0))
-
-  colnames(tdm)[
-    tdm[termo, ] > 0
-  ]
+  termo <- tolower(termo)
+  if (!termo %in% rownames(tdm)) return(character(0))
+  colnames(tdm)[tdm[termo, ] > 0]
 }
+
+busca_booleana("MODELO", tdm)   # d2, d3
+busca_booleana("xyz", tdm)      # character(0)
+
+# Operador lógico E (AND): documentos que contêm ambos os termos
+intersect(
+  busca_booleana("documentos", tdm),
+  busca_booleana("busca", tdm)
+)                               # d5
 ```
 
-### Busca pelo termo `porto`
+`tolower()` normaliza maiúsculas e minúsculas; `character(0)` representa um resultado vazio; `intersect()` mantém apenas os documentos presentes em ambos os resultados.
+
+### TF, DF, IDF e TF-IDF
+
+- **TF (Term Frequency):** quantidade de ocorrências de um termo em um documento específico.
+- **DF (Document Frequency):** número de documentos diferentes que contêm o termo.
+- **IDF (Inverse Document Frequency):** mede a raridade do termo no conjunto de documentos.
+- **TF-IDF:** combina frequência no documento com raridade no corpus para atribuir um peso ao termo.
+
+Fórmulas usadas na aula:
+
+\[
+IDF(t) = \log\left(\frac{N}{df_t}\right)
+\]
+
+\[
+TF\text{-}IDF(t,d) = TF(t,d) \times IDF(t)
+\]
+
+Com oito documentos, um termo presente em todos tem IDF igual a zero. Um termo presente em apenas um documento tem IDF aproximadamente 2,08.
 
 ```r
-busca_booleana("porto", tdm)
+N <- ncol(tdm)
+df <- rowSums(tdm > 0)
+idf <- log(N / df)
+tfidf <- tdm * idf
+
+round(idf["modelo"], 2)                 # 1.39
+round(tfidf["modelo", "d3"], 2)         # 1.39
+round(max(idf), 2)                     # 2.08
+round(idf[c("de", "documentos", "recuperacao", "bm25")], 2)
+# de: 0.47; documentos: 0.69; recuperacao: 1.39; bm25: 2.08
 ```
 
-O termo `porto` foi encontrado em **53 dos 75 parágrafos** considerados na matriz.
+`tdm` guarda frequências; `tfidf` guarda pesos calculados a partir das frequências e da raridade dos termos. Um termo com TF = 2 e DF = 1 em um corpus de oito documentos recebe aproximadamente `2 × log(8) = 4,16`.
 
-Os documentos retornados foram:
-
-`paragrafo-1`, `paragrafo-2`, `paragrafo-3`, `paragrafo-4`, `paragrafo-6`, `paragrafo-7`, `paragrafo-10`, `paragrafo-11`, `paragrafo-12`, `paragrafo-13`, `paragrafo-16`, `paragrafo-17`, `paragrafo-18`, `paragrafo-20`, `paragrafo-22`, `paragrafo-23`, `paragrafo-24`, `paragrafo-25`, `paragrafo-26`, `paragrafo-27`, `paragrafo-28`, `paragrafo-31`, `paragrafo-32`, `paragrafo-33`, `paragrafo-34`, `paragrafo-35`, `paragrafo-36`, `paragrafo-38`, `paragrafo-39`, `paragrafo-40`, `paragrafo-42`, `paragrafo-43`, `paragrafo-44`, `paragrafo-51`, `paragrafo-52`, `paragrafo-53`, `paragrafo-54`, `paragrafo-56`, `paragrafo-57`, `paragrafo-58`, `paragrafo-59`, `paragrafo-60`, `paragrafo-61`, `paragrafo-62`, `paragrafo-63`, `paragrafo-64`, `paragrafo-67`, `paragrafo-68`, `paragrafo-70`, `paragrafo-71`, `paragrafo-73`, `paragrafo-74`, `paragrafo-75`.
-
-### Busca pelo termo `cidade`
+### Busca por padrão (`grep`) versus busca booleana
 
 ```r
-busca_booleana("cidade", tdm)
+grep("recupera", docs)              # posições 1 e 4
+busca_booleana("recupera", tdm)     # character(0)
+
+grep("busca", docs)                # posições 5 e 7
+busca_booleana("busc", tdm)        # character(0)
 ```
 
-O termo `cidade` foi encontrado em **10 parágrafos**:
+`grep()` encontra sequências de caracteres dentro dos textos, inclusive como parte de palavras maiores. A busca booleana implementada consulta termos completos do vocabulário. `grep()` retorna posições dos documentos; `busca_booleana()` retorna seus identificadores.
 
-`paragrafo-8`, `paragrafo-20`, `paragrafo-24`, `paragrafo-32`, `paragrafo-36`, `paragrafo-37`, `paragrafo-39`, `paragrafo-41`, `paragrafo-51` e `paragrafo-70`.
+## 2. Minha reflexão sobre a aula
 
-## Considerações sobre os resultados
+### Conceito mais importante
 
-Os resultados mostram que o processamento conseguiu transformar os textos obtidos da Wikipédia em uma estrutura adequada para operações básicas de mineração de textos.
+> Acho que foi TF-IDF, porque ele é um cálculo bastante importante no motor de busca.
 
-O vocabulário apresentou **1.946 termos únicos**, enquanto a matriz termo-documento apresentou **75 parágrafos**. Isso demonstra uma quantidade considerável de termos diferentes mesmo após a filtragem dos parágrafos menores.
+O TF-IDF permite calcular pesos dos termos a partir da frequência no documento e da raridade no conjunto de documentos, sendo útil para a recuperação de informações.
 
-A análise de frequência mostrou forte presença de palavras funcionais, principalmente `de`, `o`, `a`, `e` e `do`. Isso é esperado em textos escritos em português, mas também indica que uma análise baseada somente na frequência bruta pode ser influenciada por palavras que possuem pouca relevância temática.
+### Dificuldade superada
 
-O termo `porto` apresentou frequência de **92 ocorrências** e apareceu em **53 dos 75 parágrafos**, mostrando uma distribuição ampla pelo corpus e uma forte relação com o assunto dos textos analisados. Já `cidade` apareceu em apenas 10 parágrafos, indicando uma distribuição mais restrita.
+No início, confundi TF com DF. Depois compreendi que:
 
-Também é importante considerar uma limitação da tokenização utilizada. Como os tokens foram separados apenas por espaços, sinais de pontuação permaneceram em alguns termos. Dessa forma, uma etapa posterior de normalização poderia melhorar a qualidade do vocabulário.
+> TF é o cálculo da frequência com que um termo aparece em um só documento, e DF é a quantidade de documentos em que aquele termo aparece.
 
-Outro ponto importante é que, na construção do corpus, os parágrafos dos três artigos foram unidos em uma única estrutura e identificados sequencialmente. Assim, a análise realizada nesta entrega trabalha principalmente com os parágrafos como documentos.
+### Aplicação no projeto do ENEM
 
-## Conclusão
+> O TF-IDF ajudaria a destacar documentos relevantes sobre determinado tópico do ENEM. Por exemplo, ao pesquisar sobre a redação do ENEM, daria mais destaque a documentos que abordam esse assunto, facilitando a pesquisa.
 
-Nesta entrega foram realizadas as principais etapas iniciais de um processo de mineração de textos: obtenção dos dados, organização do corpus, limpeza, tokenização, criação do vocabulário, análise de frequência, construção da matriz termo-documento e busca booleana.
+Essa é uma aplicação possível de pesos TF-IDF, lembrando que o método depende das palavras usadas e não compreende sozinho o significado completo dos textos.
+
+## 3. Avaliação final
+
+**Resultado: 10/10 questões corretas.**
+
+| Questão | Tema | Resultado |
+|---|---|---|
+| 1 | Banco de dados versus Recuperação de Informação | Correta |
+| 2 | Retrieve e Rerank | Correta |
+| 3 | Indexação com `[` e `[[` | Correta |
+| 4 | Tokenização e `unique()` | Correta |
+| 5 | Vocabulário e frequência total | Correta |
+| 6 | Consultas à TDM e `colSums()` | Correta |
+| 7 | Busca booleana com `intersect()` | Correta |
+| 8 | Cálculo de TF-IDF | Correta |
+| 9 | Diferença entre TDM e TF-IDF | Correta |
+| 10 | Busca com `grep()` e busca booleana | Correta |
+
+## 4. Próximo passo: anexar o estado do R
+
+Este arquivo registra o conteúdo e os resultados da aula. O bloco de estado do R deve ser gerado **no próprio ambiente Colab**, sem inventar objetos ou funções.
+
+1. Salvar este texto como `aula01_consolidado.md` e disponibilizá-lo no ambiente de arquivos do Colab.
+2. Confirmar que o motor foi carregado e que o arquivo está no diretório de trabalho.
+3. Executar:
+
+```r
+anexar_estado("aula01_consolidado.md")
+```
+
+4. Conferir se o arquivo atualizado contém o bloco delimitado por `<!-- estado-R:inicio -->` e `<!-- estado-R:fim -->`.
+5. Baixar o arquivo consolidado atualizado e guardá-lo para a continuidade do projeto.
+
+> **Importante:** não adicionar manualmente um estado fictício do R; ele será produzido pela função `anexar_estado()`.
+
+---
+
+<!-- estado-R:inicio -->
+## Estado do R ao fim da sessão
+*gerado por `anexar_estado()` em 2026-11-10 15:09 · R version 4.6.1 (2026-06-24) · motor01 v1 2026-10-01 · não edite à mão*
+
+### Objetos
+
+| objeto | tipo | tamanho | valor / amostra |
+|---|---|---|---|
+| `df` | numeric, nomeado | 45 | a 4, acelera 1, aprendizado 1, avaliacao 1, bm25 1, busca 2, ... |
+| `docs` | character, nomeado | 8 | d1 recuperacao de informacao o..., d2 o modelo de espaco vetorial..., d3 bm25 e um modelo probabilis..., d4 aprendizado estatistico fun..., d5 o indice invertido acelera ..., d6 embeddings capturam a seman..., ... |
+| `docs9` | character, nomeado | 9 | d1 recuperacao de informacao o..., d2 o modelo de espaco vetorial..., d3 bm25 e um modelo probabilis..., d4 aprendizado estatistico fun..., d5 o indice invertido acelera ..., d6 embeddings capturam a seman..., ... |
+| `freq` | table, nomeado | 45 | a 5, acelera 1, aprendizado 1, avaliacao 1, bm25 1, busca 2, ... |
+| `idf` | numeric, nomeado | 45 | a 0.6931, acelera 2.079, aprendizado 2.079, avaliacao 2.079, bm25 2.079, busca 1.386, ... |
+| `MOTOR_VERSAO` | character | 1 | motor01 v1 2026-10-01 |
+| `N` | integer | 1 | 8 |
+| `tdm` | matrix | 45 × 8 | linhas: a, acelera, aprendizado, ... \| colunas: d1, d2, d3, d4, ... |
+| `texto` | character | 1 | Modelo modelo MODELO |
+| `tfidf` | matrix | 45 × 8 | linhas: a, acelera, aprendizado, ... \| colunas: d1, d2, d3, d4, ... |
+| `tokens` | character | 3 | modelo, modelo, modelo |
+| `vocab` | character | 45 | a, acelera, aprendizado, avaliacao, bm25, busca, ... |
+
+### Funções definidas
+
+`anexar_estado`, `busca_booleana`, `estado`, `tokenizar`
+<!-- estado-R:fim -->
+
