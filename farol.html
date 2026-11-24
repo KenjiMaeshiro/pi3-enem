@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Gerado a partir de estrutura/banco-de-dados (corpus.csv, necessidades.csv, qrels_consenso.csv, origens.rds)
+     e do motor do grupo (motor08.R + config.R + aula08_frase.R). Abre direto no navegador, sem servidor. -->
+<title>Farol dos Portos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Interface de conversa sobre o motor de busca do grupo Enem (PI III, Fatec Baixada Santista): BM25 + releitura por proximidade nos portos de Santos, Xangai e Roterdã.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: painel lateral (como funciona, config.R, gabarito) + coluna de conversa;
+   no celular o painel vira gaveta. Cores: névoa de cais, tinta naval, azul de porto e o amarelo dos guindastes. */
+:root {
+  --bg: #eef2f4;
+  --surface: #ffffff;
+  --surface-2: #e4eaee;
+  --ink: #13212c;
+  --ink-2: #44535e;
+  --muted: #6b7882;
+  --line: #d2dae0;
+  --accent: #0d5f80;
+  --accent-ink: #ffffff;
+  --accent-soft: #d6e8f0;
+  --signal: #f2b705;
+  --signal-soft: #fbedbd;
+  --santos: #1f8a63;
+  --xangai: #c8423a;
+  --roterda: #d9731c;
+  --good: #1b7643; --good-bg: #dcefe2;
+  --warn: #8f5d00; --warn-bg: #f9edcf;
+  --bad: #9a3030; --bad-bg: #f5e0e0;
+  --t0: #8a969e;
+  --t1: #2a78d6; --t2: #eb6834; --t3: #1baf7a; --t4: #eda100;
+  --t5: #e87ba4; --t6: #008300; --t7: #6250d6; --t8: #e34948;
+  --f-display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --raio: 12px;
+  --sombra: 0 1px 2px rgb(19 33 44 / 6%), 0 6px 24px rgb(19 33 44 / 6%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c141a; --surface: #14202a; --surface-2: #1b2a35; --ink: #e4ecf1; --ink-2: #a9b7c1; --muted: #81909a; --line: #283844;
+    --accent: #5db3d5; --accent-ink: #06202c; --accent-soft: #16384a; --signal: #f5c431; --signal-soft: #3a3010;
+    --santos: #3db487; --xangai: #e46a61; --roterda: #ef9145;
+    --good: #6fd39a; --good-bg: #153524; --warn: #f0b54a; --warn-bg: #3a2c0c; --bad: #f29090; --bad-bg: #3d1b1b;
+    --t0: #6d7a83;
+    --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500;
+    --t5: #d55181; --t6: #0ca30c; --t7: #9085e9; --t8: #e66767;
+    --sombra: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 28px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c141a; --surface: #14202a; --surface-2: #1b2a35; --ink: #e4ecf1; --ink-2: #a9b7c1; --muted: #81909a; --line: #283844;
+  --accent: #5db3d5; --accent-ink: #06202c; --accent-soft: #16384a; --signal: #f5c431; --signal-soft: #3a3010;
+  --santos: #3db487; --xangai: #e46a61; --roterda: #ef9145;
+  --good: #6fd39a; --good-bg: #153524; --warn: #f0b54a; --warn-bg: #3a2c0c; --bad: #f29090; --bad-bg: #3d1b1b;
+  --t0: #6d7a83;
+  --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500;
+  --t5: #d55181; --t6: #0ca30c; --t7: #9085e9; --t8: #e66767;
+  --sombra: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 28px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-text-size-adjust: 100%;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+h1, h2, h3, h4 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+@media (min-width: 980px) {
+  .app { grid-template-columns: 300px minmax(0, 1fr); }
+}
+
+/* ---------- painel ---------- */
+.painel {
+  display: none;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-block: 20px 28px;
+  scrollbar-width: thin;
+}
+@media (min-width: 980px) { .painel { display: block; } .so-celular { display: none !important; } }
+.painel.aberto {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  max-height: none;
+  background: var(--bg);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.painel-inner { display: grid; gap: 22px; }
+.marca { display: flex; align-items: center; gap: 12px; }
+.marca svg { width: 40px; height: 40px; flex: none; }
+.marca h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.015em; line-height: 1; }
+.marca p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+.bloco { display: grid; gap: 10px; }
+.rotulo {
+  font: 600 11px/1.2 var(--f-mono);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.fluxo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: passo; }
+.fluxo li {
+  counter-increment: passo;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  position: relative;
+}
+.fluxo li::before {
+  content: counter(passo);
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface); border: 1px solid var(--line);
+  font: 600 12px var(--f-mono); color: var(--ink-2);
+  position: relative; z-index: 1;
+}
+.fluxo li:not(:last-child)::after {
+  content: ""; position: absolute; left: 12.5px; top: 33px; bottom: -7px; width: 1px; background: var(--line);
+}
+.fluxo b { display: block; font-weight: 600; font-size: 13.5px; }
+.fluxo span { color: var(--muted); font-size: 12.5px; line-height: 1.4; display: block; }
+.fluxo code { color: var(--ink-2); }
+
+.ajustes { display: grid; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); padding: 14px; }
+.ajuste { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.ajuste label { font-size: 13px; font-weight: 500; }
+.ajuste label small { color: var(--muted); font-weight: 400; }
+.ajuste output { font: 500 13px var(--f-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ajuste input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.ajuste select { grid-column: 2; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+.ajuste-mudou output, .ajuste-mudou select { color: var(--accent); font-weight: 600; }
+.ajustes-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: default; color: var(--ink); border-color: var(--line); }
+.map {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px;
+  font-size: 13px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.map b { font: 600 13px var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; }
+.map small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; line-height: 1.4; }
+
+.lista-q { display: grid; gap: 2px; max-height: 300px; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; }
+.lista-q button {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; text-align: left;
+  border: 0; background: transparent; padding: 6px 8px; border-radius: 8px; font-size: 12.5px; line-height: 1.35;
+}
+.lista-q button:hover { background: var(--surface); }
+.lista-q .qid { font: 500 11.5px var(--f-mono); color: var(--muted); padding-top: 1px; }
+.lista-q .sem-r { color: var(--muted); }
+.fatos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fato { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.fato b { display: block; font: 700 19px var(--f-display); font-variant-numeric: tabular-nums; }
+.fato span { font-size: 11.5px; color: var(--muted); line-height: 1.3; display: block; }
+.nota-painel { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin: 0; }
+.nota-painel a { color: var(--accent); }
+
+/* ---------- coluna de conversa ---------- */
+.chat { min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
+.topo {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-block: 18px 6px;
+}
+.topo .marca h1 { font-size: 22px; }
+.topo .marca svg { width: 34px; height: 34px; }
+.topo-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (min-width: 980px) { .topo .marca { visibility: hidden; } }
+
+.conversa { display: grid; gap: 26px; padding-block: 14px 28px; flex: 1; align-content: start; max-width: 860px; width: 100%; }
+.msg { display: grid; gap: 8px; min-width: 0; }
+.msg-user { justify-items: end; }
+.balao {
+  background: var(--ink); color: var(--bg);
+  padding: 10px 16px; border-radius: 18px 18px 4px 18px;
+  max-width: min(560px, 92%); font-size: 15.5px; overflow-wrap: anywhere;
+}
+.msg-ia { grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+.avatar {
+  width: 34px; height: 34px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line);
+  display: grid; place-items: center;
+}
+.avatar svg { width: 24px; height: 24px; }
+.ia-corpo { min-width: 0; display: grid; gap: 14px; }
+.ia-nome { font: 700 14px var(--f-display); display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ia-nome small { font: 400 12px var(--f-mono); color: var(--muted); }
+.ia-corpo > p { margin: 0; max-width: 68ch; }
+.ia-corpo .lead { font-size: 16px; }
+
+.sugestoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.sugestao {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+  padding: 7px 13px; font-size: 13.5px; text-align: left; line-height: 1.3;
+}
+.sugestao:hover { border-color: var(--accent); color: var(--accent); }
+.sugestao small { color: var(--muted); font-family: var(--f-mono); font-size: 11px; margin-left: 4px; }
+
+/* pensando */
+.pensando { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; color: var(--ink-2); }
+.pensando li { display: flex; align-items: center; gap: 10px; }
+.pensando li::before {
+  content: ""; width: 14px; height: 14px; border-radius: 50%; flex: none;
+  border: 2px solid var(--line); border-top-color: var(--accent);
+  animation: gira 0.8s linear infinite;
+}
+.pensando li.feito { color: var(--muted); }
+.pensando li.feito::before { animation: none; border-color: var(--good); background: var(--good); box-shadow: inset 0 0 0 2px var(--surface); }
+@keyframes gira { to { transform: rotate(360deg); } }
+
+/* raciocínio */
+.raciocinio { border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.raciocinio > summary {
+  list-style: none; cursor: pointer; padding: 11px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-size: 13.5px; color: var(--ink-2);
+}
+.raciocinio > summary::-webkit-details-marker { display: none; }
+.raciocinio > summary b { color: var(--ink); font-weight: 600; }
+.seta { width: 10px; height: 10px; flex: none; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform 0.15s; margin-right: 2px; }
+details[open] > summary .seta { transform: rotate(45deg); }
+.raciocinio > summary .meta { font: 400 12px var(--f-mono); color: var(--muted); margin-left: auto; }
+.etapas { list-style: none; margin: 0; padding: 4px 14px 14px; display: grid; gap: 0; border-top: 1px solid var(--line); }
+.etapa { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 14px 0 6px; position: relative; }
+.etapa:not(:last-child)::after { content: ""; position: absolute; left: 14.5px; top: 46px; bottom: -6px; width: 1px; background: var(--line); }
+.etapa-num {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 13px var(--f-mono); background: var(--accent-soft); color: var(--accent);
+}
+.etapa.est2 .etapa-num { background: var(--signal-soft); color: var(--ink); }
+.etapa-corpo { min-width: 0; display: grid; gap: 9px; }
+.etapa h4 { font-size: 15px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.etapa h4 .fn { font: 400 12px var(--f-mono); color: var(--muted); }
+.etapa .resumo { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 70ch; }
+.etapa details { font-size: 13.5px; }
+.etapa details > summary { cursor: pointer; color: var(--accent); font-weight: 500; width: fit-content; }
+.etapa details > summary::marker { color: var(--accent); }
+.etapa details[open] > summary { margin-bottom: 8px; }
+.explica { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; max-width: 72ch; }
+
+/* chips de termos */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); font: 500 13px var(--f-mono); white-space: nowrap; line-height: 1.6;
+}
+.chip i { width: 9px; height: 9px; border-radius: 3px; flex: none; background: var(--sw, var(--t0)); }
+.chip.sw { color: var(--muted); text-decoration: line-through; background: transparent; border-style: dotted; }
+.chip.sw i { display: none; }
+.chip.fora { border-style: dashed; color: var(--muted); background: transparent; }
+.chip.fora i { background: transparent; border: 1.5px solid var(--muted); }
+.chip.frase { border-color: var(--accent); color: var(--accent); }
+.legenda-chips { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.legenda-chips span { display: inline-flex; gap: 5px; align-items: center; }
+.t0 { --sw: var(--t0); } .t1 { --sw: var(--t1); } .t2 { --sw: var(--t2); } .t3 { --sw: var(--t3); } .t4 { --sw: var(--t4); }
+.t5 { --sw: var(--t5); } .t6 { --sw: var(--t6); } .t7 { --sw: var(--t7); } .t8 { --sw: var(--t8); }
+mark.m {
+  background: color-mix(in srgb, var(--sw) 22%, transparent);
+  color: inherit; border-radius: 3px; padding: 0 1px;
+  box-shadow: inset 0 -2px 0 var(--sw);
+}
+.sug-termos { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sug-termos .tag-ui { font: 500 10.5px var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+.sug-termos button { border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 999px; padding: 1px 9px; font: 500 12.5px var(--f-mono); }
+
+/* limpeza */
+.limpeza { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.limpeza li { display: grid; gap: 2px; }
+.limpeza span { font-size: 12px; color: var(--muted); }
+.limpeza code { background: var(--surface-2); padding: 5px 8px; border-radius: 6px; overflow-wrap: anywhere; display: block; }
+
+/* índice */
+.indice { display: grid; gap: 7px; }
+.idx-linha { display: grid; grid-template-columns: minmax(90px, 150px) minmax(60px, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.idx-linha .chip { justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.df-barra { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+.df-barra i { display: block; height: 100%; background: var(--ink-2); border-radius: 0 4px 4px 0; opacity: 0.55; }
+.idx-num { font: 400 12.5px var(--f-mono); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+.idx-num b { color: var(--ink); font-weight: 600; }
+.raridade { font: 500 10.5px var(--f-mono); letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; margin-left: 6px; }
+.raridade.r3 { background: var(--accent-soft); color: var(--accent); }
+.raridade.r2 { background: var(--surface-2); color: var(--ink-2); }
+.raridade.r1 { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.por-porto { font-size: 12.5px; color: var(--ink-2); display: grid; gap: 4px; }
+.por-porto div { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+
+/* gráfico BM25 */
+.barras { display: grid; gap: 8px; }
+.barra-linha { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 10px; align-items: center; }
+.barra-rot { display: flex; align-items: center; gap: 6px; font: 500 12.5px var(--f-mono); color: var(--ink-2); white-space: nowrap; overflow: hidden; }
+.barra-rot .pos { color: var(--muted); width: 20px; text-align: right; flex: none; }
+.ponto { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--cor-porto); }
+.santos { --cor-porto: var(--santos); } .xangai { --cor-porto: var(--xangai); } .roterda { --cor-porto: var(--roterda); }
+.barra-trilho { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.barra { display: flex; gap: 2px; height: 14px; min-width: 3px; }
+.barra span { background: var(--sw); height: 100%; min-width: 2px; }
+.barra span:first-child { border-radius: 0; }
+.barra span:last-child { border-radius: 0 4px 4px 0; }
+.barra-val { font: 500 12.5px var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
+.eixo-nota { font-size: 12px; color: var(--muted); }
+
+.formula {
+  font: 400 13px/1.7 var(--f-mono); background: var(--surface-2); border-radius: 8px; padding: 10px 12px;
+  overflow-x: auto; white-space: pre; color: var(--ink);
+}
+.tabela-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.contas th, .contas td { padding: 6px 9px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.contas th { font: 600 11px var(--f-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; background: var(--surface-2); }
+.contas th:first-child, .contas td:first-child { text-align: left; }
+.contas td { font-family: var(--f-mono); }
+.contas tr:last-child td { border-bottom: 0; }
+.contas .zero { color: var(--muted); }
+.contas .tot { font-weight: 600; }
+.th-termo { display: inline-flex; align-items: center; gap: 5px; text-transform: none; letter-spacing: 0; }
+.th-termo i { width: 8px; height: 8px; border-radius: 2px; background: var(--sw); }
+
+/* releitura */
+.releitura { display: grid; gap: 8px; }
+.rl-linha {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 9px 11px; border-radius: 10px; background: var(--surface-2);
+}
+.rl-pos { font: 700 18px var(--f-display); font-variant-numeric: tabular-nums; }
+.rl-info { min-width: 0; display: grid; gap: 3px; }
+.rl-doc { display: flex; align-items: center; gap: 7px; font: 500 12.5px var(--f-mono); flex-wrap: wrap; }
+.rl-pares { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12.5px; color: var(--ink-2); }
+.par b { font-family: var(--f-mono); font-weight: 500; }
+.rl-score { text-align: right; font: 600 14px var(--f-mono); font-variant-numeric: tabular-nums; }
+.rl-score small { display: block; font: 400 11px var(--f-body); color: var(--muted); }
+.mov { font: 600 11.5px var(--f-mono); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+.mov.sobe { background: var(--good-bg); color: var(--good); }
+.mov.desce { background: var(--bad-bg); color: var(--bad); }
+.mov.igual { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.antes { font-size: 12.5px; color: var(--muted); }
+.antes code { color: var(--ink-2); }
+
+/* resposta */
+.resposta { display: grid; gap: 12px; }
+.cartao {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio);
+  padding: 14px 16px; display: grid; gap: 10px; min-width: 0;
+}
+.cartao.destaque { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--sombra); }
+.cartao-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; }
+.cartao-pos { font: 800 20px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.porto-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.doc-id { font: 400 12px var(--f-mono); color: var(--muted); }
+.pts { margin-left: auto; font: 600 13px var(--f-mono); font-variant-numeric: tabular-nums; }
+.pts small { font-weight: 400; color: var(--muted); }
+.trecho { margin: 0; font-size: 15px; line-height: 1.6; max-width: 72ch; overflow-wrap: break-word; }
+.cartao:not(.destaque) .trecho.curto { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.porque { margin: 0; padding: 0 0 0 16px; display: grid; gap: 3px; font-size: 13.5px; color: var(--ink-2); max-width: 74ch; }
+.porque li::marker { color: var(--muted); }
+.cartao-acoes { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; }
+.link { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 500; font-size: 13px; }
+.link:hover { text-decoration: underline; }
+.visao { font: 400 13px/1.8 var(--f-mono); background: var(--surface-2); padding: 10px 12px; border-radius: 8px; overflow-wrap: anywhere; color: var(--ink-2); }
+.visao .sw { color: var(--muted); text-decoration: line-through; opacity: 0.7; }
+.selo { display: inline-flex; align-items: center; gap: 5px; font: 600 11.5px var(--f-body); padding: 2px 8px; border-radius: 999px; }
+.selo svg { width: 12px; height: 12px; }
+.selo.g2 { background: var(--good-bg); color: var(--good); }
+.selo.g1 { background: var(--warn-bg); color: var(--warn); }
+.selo.g0 { background: var(--bad-bg); color: var(--bad); }
+.selo.gx { background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+
+.gabarito {
+  border: 1px solid var(--line); border-radius: var(--raio); padding: 12px 14px; display: grid; gap: 8px;
+  background: linear-gradient(var(--surface), var(--surface)) padding-box;
+}
+.gabarito h4 { font-size: 14px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.gabarito p { margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 72ch; }
+.ap-linha { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; }
+.ap-linha b { font: 600 15px var(--f-mono); font-variant-numeric: tabular-nums; }
+.rodape { font-size: 12.5px; color: var(--muted); margin: 0; max-width: 74ch; line-height: 1.5; }
+.rodape code { color: var(--ink-2); }
+
+/* entrada */
+.entrada {
+  position: sticky; bottom: 0; z-index: 5; max-width: 860px; width: 100%;
+  padding-top: 18px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to bottom, transparent, var(--bg) 22px);
+}
+.caixa {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px 8px 8px 14px;
+  box-shadow: var(--sombra);
+}
+.caixa:focus-within { border-color: var(--accent); }
+.caixa textarea {
+  border: 0; outline: 0; resize: none; background: transparent; min-height: 40px; max-height: 160px;
+  padding: 8px 0; line-height: 1.45; font-size: 15.5px; width: 100%;
+}
+.enviar {
+  width: 40px; height: 40px; border-radius: 12px; border: 0; background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center;
+}
+.enviar:disabled { background: var(--surface-2); color: var(--muted); cursor: default; }
+.enviar svg { width: 18px; height: 18px; }
+.dica-entrada { font-size: 12px; color: var(--muted); margin: 7px 4px 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.dica-entrada code { color: var(--ink-2); }
+
+/* dica flutuante */
+#dica {
+  position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg);
+  font: 400 12.5px/1.4 var(--f-body); padding: 6px 9px; border-radius: 7px; max-width: 260px; box-shadow: var(--sombra);
+}
+#dica b { font-weight: 600; }
+
+@media (max-width: 560px) {
+  .barra-linha { grid-template-columns: 92px minmax(0, 1fr); }
+  .barra-rot .pos { display: none; }
+  .idx-linha { grid-template-columns: minmax(80px, 110px) minmax(40px, 1fr); }
+  .idx-linha .idx-num { grid-column: 1 / -1; text-align: left; }
+  .fatos { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .msg-ia { grid-template-columns: minmax(0, 1fr); }
+  .msg-ia > .avatar { display: none; }
+  .etapa { grid-template-columns: 26px minmax(0, 1fr); gap: 10px; }
+  .etapa-num { width: 26px; height: 26px; font-size: 12px; }
+  .etapa:not(:last-child)::after { left: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" lang="pt-BR">
+  <aside class="painel" id="painel" aria-label="Como o motor funciona">
+    <div class="painel-inner">
+      <div class="marca">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><use href="#farol"></use></svg>
+        <div><h1>Farol</h1><p>motor de busca · grupo Enem · PI III</p></div>
+        <button class="btn so-celular" id="fechar-painel" type="button" style="margin-left:auto">Fechar</button>
+      </div>
+
+      <section class="bloco">
+        <h2 class="rotulo">Como o Farol responde</h2>
+        <ol class="fluxo">
+          <li><div><b>Prepara a pergunta</b><span>tira acentos e pontuação, passa para minúsculas e remove as stopwords · <code>preparar()</code></span></div></li>
+          <li><div><b>Consulta o índice invertido</b><span>em quais trechos cada termo aparece, e quão raro ele é · <code>indice_invertido()</code></span></div></li>
+          <li><div><b>Estágio 1 · BM25</b><span>dá uma nota a cada um dos 60 trechos · <code>ranking_bm25()</code></span></div></li>
+          <li><div><b>Estágio 2 · proximidade</b><span>relê só os primeiros e sobe quem tem os termos em ordem e perto · <code>rerank_prox()</code></span></div></li>
+          <li><div><b>Mostra e explica</b><span>os trechos, com as contas de cada nota</span></div></li>
+        </ol>
+      </section>
+
+      <section class="bloco" aria-labelledby="rot-ajustes">
+        <h2 class="rotulo" id="rot-ajustes">Ajustes do motor (config.R)</h2>
+        <form class="ajustes" id="ajustes" onsubmit="return false">
+          <div class="ajuste" data-campo="k1">
+            <label for="aj-k1">k1 <small>saturação da frequência</small></label><output id="out-k1" for="aj-k1">1,2</output>
+            <input type="range" id="aj-k1" min="0" max="3" step="0.1" value="1.2">
+          </div>
+          <div class="ajuste" data-campo="b">
+            <label for="aj-b">b <small>desconto pelo tamanho</small></label><output id="out-b" for="aj-b">0,75</output>
+            <input type="range" id="aj-b" min="0" max="1" step="0.05" value="0.75">
+          </div>
+          <div class="ajuste" data-campo="rerank_k">
+            <label for="aj-k">rerank_k <small>quantos o estágio 2 relê</small></label>
+            <select id="aj-k"><option value="0">0 (desligado)</option><option value="3" selected>3</option><option value="5">5</option><option value="10">10</option></select>
+          </div>
+          <div class="ajuste" data-campo="janela">
+            <label for="aj-j">janela <small>distância máxima entre termos</small></label>
+            <select id="aj-j"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
+          </div>
+          <div class="ajustes-acoes">
+            <button class="btn" type="button" id="restaurar" disabled>Restaurar config.R</button>
+            <button class="btn" type="button" id="refazer" disabled>Refazer a última pergunta</button>
+          </div>
+          <div class="map" aria-live="polite">
+            <span>MAP só com o BM25</span><b id="map0">—</b>
+            <span>MAP com a releitura</span><b id="map1">—</b>
+            <small>Média do AP nas 11 consultas do gabarito do grupo que têm algum trecho de grau 2 (limiar = 2). Recalculado a cada ajuste.</small>
+          </div>
+        </form>
+      </section>
+
+      <section class="bloco" aria-labelledby="rot-gab">
+        <h2 class="rotulo" id="rot-gab">Consultas do gabarito (q01–q20)</h2>
+        <div class="lista-q" id="lista-q"></div>
+        <p class="nota-painel">Em cinza, as consultas sem nenhum trecho de grau 2 no gabarito (ficam fora do MAP).</p>
+      </section>
+
+      <section class="bloco" aria-labelledby="rot-corpus">
+        <h2 class="rotulo" id="rot-corpus">O corpus</h2>
+        <div class="fatos">
+          <div class="fato"><b id="f-n">60</b><span>trechos, 20 por porto</span></div>
+          <div class="fato"><b id="f-v">1.229</b><span>termos no vocabulário</span></div>
+          <div class="fato"><b id="f-m">42,5</b><span>termos por trecho, em média</span></div>
+        </div>
+        <p class="nota-painel">Parágrafos dos artigos <i>Porto de Santos</i>, <i>Porto de Xangai</i> e <i>Porto de Roterdão</i> da Wikipédia em português (14/08/2026, CC BY-SA), congelados na Aula 05. O artigo de Roterdã é curto, então os 20 trechos dele são janelas de cerca de 28 palavras cortadas no meio do texto.</p>
+      </section>
+    </div>
+  </aside>
+
+  <main class="chat">
+    <header class="topo">
+      <div class="marca">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><use href="#farol"></use></svg>
+        <div><h1>Farol</h1><p>motor de busca · grupo Enem</p></div>
+      </div>
+      <div class="topo-acoes">
+        <button class="btn so-celular" id="abrir-painel" type="button">Como funciona</button>
+        <button class="btn" id="novo" type="button">Nova conversa</button>
+      </div>
+    </header>
+
+    <section class="conversa" id="conversa" aria-live="polite"></section>
+
+    <form class="entrada" id="form" autocomplete="off">
+      <div class="caixa">
+        <label for="pergunta" class="rotulo" style="position:absolute;left:-9999px">Pergunta</label>
+        <textarea id="pergunta" rows="1" placeholder="Pergunte sobre os portos de Santos, Xangai ou Roterdã…"></textarea>
+        <button class="enviar" id="enviar" type="submit" aria-label="Perguntar" disabled>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <p class="dica-entrada"><span><kbd>Enter</kbd> envia · <kbd>Shift</kbd>+<kbd>Enter</kbd> quebra a linha</span><span>Aspas pedem frase exata: <code>terminal "águas profundas"</code></span></p>
+    </form>
+  </main>
+</div>
+
+<div id="dica" role="tooltip" hidden></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="farol" viewBox="0 0 32 32">
+    <polygon points="13.5,8.2 1.5,4.2 1.5,12.2" fill="var(--signal)" opacity="0.45"/>
+    <polygon points="18.5,8.2 30.5,4.2 30.5,12.2" fill="var(--signal)" opacity="0.45"/>
+    <polygon points="11.8,6 16,2.4 20.2,6" fill="var(--ink)"/>
+    <rect x="13" y="6" width="6" height="4.4" rx="1" fill="var(--signal)"/>
+    <polygon points="12.6,11 19.4,11 21.6,28.6 10.4,28.6" fill="var(--accent)"/>
+    <polygon points="11.65,18.6 20.35,18.6 20.75,22 11.25,22" fill="var(--surface)"/>
+    <rect x="7.5" y="28.6" width="17" height="2" rx="1" fill="var(--ink)"/>
+  </symbol>
+</svg>
+
+<noscript><p style="padding:24px">Esta página precisa de JavaScript para rodar o motor de busca.</p></noscript>
+
+<script id="dados" type="application/json">{"corpus":[{"id":"doc-fecae25906e7b91c","porto":"roterda","texto":"o porto de roterdao portugues europeu ou roterda portugues brasileiro e o maior porto maritimo da europa esta localizado na cidade de roterda na holanda do sul nos","original":"O porto de Roterdão (português europeu) ou Roterdã (português brasileiro) é o maior porto marítimo da Europa. Está localizado na cidade de Roterdã, na Holanda do Sul, nos"},{"id":"doc-1dca3350bc9b993d","porto":"roterda","texto":"paises baixos de 1962 ate 2002 foi o porto mais ativo do mundo atualmente foi ultrapassado por portos asiaticos como os de singapura e de xangai em 2006","original":"Países Baixos. De 1962 até 2002, foi o porto mais ativo do mundo. Atualmente, foi ultrapassado por portos asiáticos como os de Singapura e de Xangai. Em 2006"},{"id":"doc-01f9b4f10d310241","porto":"roterda","texto":"roterda foi o setimo maior do mundo em termos de contentores manipulados no porto em unidades equivalentes a 20 pes teu abrangendo 105 quilometros quadrados o porto de","original":"Roterdã foi o sétimo maior do mundo em termos de contentores manipulados no porto, em unidades equivalentes a 20 pés (TEU).\nAbrangendo 105 quilómetros quadrados, o porto de"},{"id":"doc-09c80f2d1ecbbb22","porto":"roterda","texto":"roterda agora estende se por uma distancia de quarenta quilometros 25 milhas consiste na area do centro historico da cidade incluindo delfshaven o maashaven rijnhaven e feijenoord os","original":"Roterdã agora estende-se por uma distância de quarenta quilómetros (25 milhas). Consiste na área do centro histórico da cidade, incluindo Delfshaven, o Maashaven, Rijnhaven e Feijenoord; os"},{"id":"doc-95b16c205f58c0a3","porto":"roterda","texto":"portos em torno de nieuw mathenesse waalhaven vondelingenplaat eemhaven botlek europoort situados ao longo da calandkanaal nieuwe waterweg e scheur este ultimo sendo os dois continuados de nieuwe maas","original":"portos em torno de Nieuw-Mathenesse; Waalhaven; Vondelingenplaat; Eemhaven; Botlek; Europoort, situados ao longo da Calandkanaal, Nieuwe Waterweg e Scheur (este último sendo os dois continuados de Nieuwe Maas"},{"id":"doc-e6e35237be5c264b","porto":"roterda","texto":"e valorizado a area de maasvlakte historia na primeira metade do seculo xx as atividades portuarias deslocaram se do centro oeste para o mar do norte o nieuwe","original":"e valorizado a área de Maasvlakte\n\nHistória\n\nNa primeira metade do século XX, as atividades portuárias deslocaram-se do centro-oeste para o Mar do Norte. O Nieuwe"},{"id":"doc-11237fcb5e042bfd","porto":"roterda","texto":"waterweg foi cavado de roterdao para o mar do norte sendo um canal para o desaguar dos rios reno e mosa o nieuwe waterweg estava pronto em","original":"Waterweg foi cavado de Roterdão para o Mar do Norte, sendo um canal para o desaguar dos rios Reno e Mosa. O Nieuwe Waterweg estava pronto em"},{"id":"doc-fec162740cbeb223","porto":"roterda","texto":"1872 e todo o tipo de actividade industrial estava formado nas margens deste canal o territorio do antigo porto foi ampliado pela construcao do europoort portao para a","original":"1872 e todo o tipo de actividade industrial estava formado nas margens deste canal.\nO território do antigo porto foi ampliado pela construção do Europoort (portão para a"},{"id":"doc-97a34c4835289df7","porto":"roterda","texto":"europa complexo ao longo da foz do nieuwe waterweg e pela maasvlakte no mar do norte perto de hoek van holland a construcao de uma segunda maasvlakte recebeu","original":"Europa), complexo ao longo da foz do Nieuwe Waterweg, e pela Maasvlakte no mar do Norte, perto de Hoek van Holland. A construção de uma segunda Maasvlakte recebeu"},{"id":"doc-1413d5de838236d0","porto":"roterda","texto":"inicialmente aprovacao politica em 2004 mas foi interrompido pelo raad van state o conselho de estado holandes que aconselha o governo e o parlamento sobre a legislacao e","original":"inicialmente, aprovação política, em 2004, mas foi interrompido pelo Raad van State (o Conselho de Estado holandês, que aconselha o Governo e o Parlamento sobre a legislação e"},{"id":"doc-7c2d2602559e107b","porto":"roterda","texto":"governacao em 2005 porque os planos nao tiveram suficientemente em conta as questoes ambientais em 10 de outubro de 2006 no entanto a aprovacao foi adquirida para","original":"governação), em 2005, porque os planos não tiveram, suficientemente, em conta as questões ambientais. Em 10 de Outubro de 2006, no entanto, a aprovação foi adquirida para"},{"id":"doc-4a66b7c1a6d42c6f","porto":"roterda","texto":"se iniciar a construcao em 2008 destinado para o primeiro navio a ancorar em 2013 o mais importante para o porto de roterdao sao as industrias petroquimica e","original":"se iniciar a construção, em 2008, destinado para o primeiro navio a ancorar em 2013.\nO mais importante para o porto de Roterdão são as indústrias petroquímica e"},{"id":"doc-37b06b360d428b99","porto":"roterda","texto":"de carga geral o porto funciona como um importante ponto de transito para o transporte de graneis e de outras mercadorias entre o continente europeu e de outras","original":"de carga geral. O porto funciona como um importante ponto de trânsito para o transporte de granéis e de outras mercadorias entre o continente europeu e de outras"},{"id":"doc-5c233ac3a9ebb8e4","porto":"roterda","texto":"partes do mundo a partir de roterdao as mercadorias sao transportadas por navio barcaca fluvial ferroviaria ou rodoviaria desde 2000 a betuweroute um rapido ferroviario de carga","original":"partes do mundo. A partir de Roterdão as mercadorias são transportadas por navio, barcaça fluvial, ferroviária ou rodoviária. Desde 2000, a Betuweroute, um rápido ferroviário de carga"},{"id":"doc-310c1524e3f8d2ad","porto":"roterda","texto":"que faz a ligacao entre roterda a alemanha esta em construcao a parte ferroviaria neerlandesa foi inaugurada em 2007 as grandes refinarias de petroleo estao localizadas a oeste","original":"que faz a ligação entre Roterdã à Alemanha, está em construção. A parte ferroviária neerlandesa foi inaugurada em 2007. As grandes refinarias de petróleo estão localizadas a oeste"},{"id":"doc-f5d88d23b5724d1d","porto":"roterda","texto":"da cidade os rios reno e mosa tambem proporcionam excelentes condicoes de acesso ao interior o eecv cais do porto tem uma profundidade de 24 metros tornando se","original":"da cidade. Os rios Reno e Mosa também proporcionam excelentes condições de acesso ao interior.\nO EECV - cais do porto tem uma profundidade de 24 metros, tornando-se"},{"id":"doc-057bf37bc31e0a02","porto":"roterda","texto":"juntamente com o terminal de ponta da madeira no estado do maranhao no brasil um dos dois unicos locais disponiveis para a amarracao do maior navio graneleiro","original":"juntamente com o Terminal de Ponta da Madeira, no estado do Maranhão, no Brasil, um dos dois únicos locais disponíveis para a amarração do maior navio graneleiro"},{"id":"doc-21b74f8cdba51a41","porto":"roterda","texto":"de minerio de ferro do mundo o berge stahl carece de fontes o calado do navio e de 23 metros e deixa apenas um metro de folga entre","original":"de minério de ferro do mundo, o   Berge Stahl [carece de fontes]?. O calado do navio é de 23 metros e deixa apenas um metro de folga entre"},{"id":"doc-06bfb8527a70fe46","porto":"roterda","texto":"a quilha do navio e o fundo do canal a profundidade de 24 metros so ocorre em uma janela de tempo restrita da mare cheia deixando pouco tempo","original":"a quilha do navio e o fundo do canal. A profundidade de 24 metros só ocorre em uma \"janela\" de tempo restrita da maré cheia, deixando pouco tempo"},{"id":"doc-501972e9e1fb7e50","porto":"roterda","texto":"para manobrar e atracar o navio a ver tambem europoort porto transporte referencias ligacoes externas porto de roterdao live vesseltraffic from rotterdam","original":"para manobrar e atracar o navio\na\nVer também: Europoort · Porto · Transporte\nReferências\nLigações externas: Porto de Roterdão · Live vesseltraffic from Rotterdam"},{"id":"doc-543790f4a0744d86","porto":"santos","texto":"porto de santos e um porto estuarino localizado nos municipios de santos guaruja e cubatao no estado de sao paulo e o principal porto brasileiro o maior complexo portuario da america latina e um dos maiores do mundo possui uma grande variedade de terminais de carga para diversos produtos que realizam a movimentacao de graneis solidos principalmente de origem vegetal liquidos conteineres carga geral e passageiros","original":"Porto de Santos é um porto estuarino, localizado nos municípios de Santos, Guarujá e Cubatão, no estado de São Paulo. É o principal porto brasileiro, o maior complexo portuário da América Latina e um dos maiores do mundo. Possui uma grande variedade de terminais de carga para diversos produtos, que realizam a movimentação de granéis sólidos (principalmente de origem vegetal), líquidos, contêineres, carga geral e passageiros"},{"id":"doc-34e10bb2c8393e95","porto":"santos","texto":"a area de influencia economica do porto concentra aproximadamente 67 do produto interno bruto pib do pais e abrange principalmente os estados de sao paulo minas gerais goias mato grosso e mato grosso do sul aproximadamente 60 do comercio internacional do estado de sao paulo em valores sao embarcados ou desembarcados atraves do porto de santos","original":"A área de influência econômica do porto concentra aproximadamente 67% do produto interno bruto (PIB) do país e abrange principalmente os estados de São Paulo, Minas Gerais, Goiás, Mato Grosso e Mato Grosso do Sul. Aproximadamente 60% do comércio internacional do estado de São Paulo (em valores) são embarcados ou desembarcados através do Porto de Santos"},{"id":"doc-eb2430c7a98d9748","porto":"santos","texto":"o complexo portuario de santos responde historicamente por mais de 25 ou um quarto da movimentacao da balanca comercial brasileira e e o maior porto exportador de acucar suco de laranja e cafe em graos do mundo outras cargas de importancia sao a soja cargas conteinerizadas milho trigo sal papel automoveis alcool e outros graneis liquidos","original":"O Complexo Portuário de Santos responde historicamente por mais de 25%, ou um quarto, da movimentação da balança comercial brasileira, e é o maior porto exportador de açúcar, suco de laranja e café em grãos do mundo. Outras cargas de importância são a soja, cargas conteinerizadas, milho, trigo, sal, papel, automóveis, álcool e outros granéis líquidos"},{"id":"doc-7840f74f5d343cdd","porto":"santos","texto":"em 2016 foi considerado o 39 maior porto do mundo por movimentacao de conteineres e 35 por tonelagem segundo ranking da associacao americana de autoridades portuarias aapa sendo o mais movimentado da america latina","original":"Em 2016, foi considerado o 39.º maior porto do mundo por movimentação de contêineres, e 35.º por tonelagem, segundo ranking da Associação Americana de Autoridades Portuárias (AAPA), sendo o mais movimentado da América Latina"},{"id":"doc-77019194da3c538e","porto":"santos","texto":"as operacoes de carga na regiao de santos e sao vicente remontam ao principio do seculo xvi ocorrendo de forma primitiva com a utilizacao de trapiches por meio dos quais a mao de obra humana ou animal transportava as mercadorias aos navios ou a barcos intermediarios a movimentacao de cargas neste periodo era explorada de forma independente por diversos agentes","original":"As operações de carga na região de Santos e São Vicente remontam ao princípio do Século XVI, ocorrendo de forma primitiva com a utilização de trapiches, por meio dos quais a mão de obra humana ou animal transportava as mercadorias aos navios ou a barcos intermediários. A movimentação de cargas neste período era explorada de forma independente por diversos agentes"},{"id":"doc-c97f55cd190b8eda","porto":"santos","texto":"a partir de 1870 a coroa passou a buscar alternativas de expansao do setor portuario para a crescente oferta de exportacao da producao cafeeira em 1886 foi iniciado o processo de concessao do porto de santos que envolvia os direitos de exploracao da movimentacao portuaria por 90 anos com a contrapartida de realizacao de obras de investimento em infraestrutura operacao e saneamento os vencedores da concessao foram o grupo liderado por eduardo guinle e candido gaffree entao comerciantes no rio de janeiro que para tanto administraram o porto de santos com a gaffree guinle e cia depois renomeada empresa de melhoramentos do porto de santos e finalmente com o nome ficou amplamente conhecida companhia docas de santos cds","original":"A partir de 1870, a Coroa passou a buscar alternativas de expansão do setor portuário para a crescente oferta de exportação da produção cafeeira. Em 1886, foi iniciado o processo de concessão do Porto de Santos, que envolvia os direitos de exploração da movimentação portuária por 90 anos, com a contrapartida de realização de obras de investimento em infraestrutura, operação e saneamento. Os vencedores da concessão foram o grupo liderado por Eduardo Guinle e Cândido Gaffrée, então comerciantes no Rio de Janeiro, que para tanto administraram o Porto de Santos com a Gaffrée, Guinle e Cia., depois renomeada Empresa de Melhoramentos do Porto de Santos e finalmente com o nome ficou amplamente conhecida, Companhia Docas de Santos (CDS"},{"id":"doc-a3276b08b5b119d8","porto":"santos","texto":"o porto foi explorado desenvolvido e ampliado pela cds sob a gestao da entao concessionaria companhia docas de santos entre 7 de novembro de 1890 e 8 de novembro de 1980 em 2 de fevereiro de 1892 o porto abriu suas portas ao comercio exterior como porto organizado com limites legalmente determinados infraestrutura de 260 metros de cais construido e area especifica para armazenagem a primeira embarcacao a atracar no novo porto foi o vapor britanico nasmith francisco de paula ribeiro foi o superintendente da companhia docas de santos entre os anos de 1888 e 1902 supervisionando e administrando a construcao dessa infraestrutura","original":"O porto foi explorado, desenvolvido e ampliado pela CDS, sob a gestão da então concessionária Companhia Docas de Santos, entre 7 de novembro de 1890 e 8 de novembro de 1980. Em 2 de fevereiro de 1892, o porto abriu suas portas ao comércio exterior como \"porto organizado\", com limites legalmente determinados, infraestrutura de 260 metros de cais construído e área específica para armazenagem. A primeira embarcação a atracar no novo porto, foi o Vapor britânico Nasmith. Francisco de Paula Ribeiro foi o superintendente da Companhia Docas de Santos entre os anos de 1888 e 1902, supervisionando e administrando a construção dessa infraestrutura"},{"id":"doc-e192ab7f1371819c","porto":"santos","texto":"no inicio do seculo xix santos foi um dos principais portos brasileiros para o desembarque de imigrantes que afluiam principalmente da italia e do japao porem a infraestrutura da cidade e suas atividades economicas nao comportavam o acolhimento destes individuos que rapidamente se distribuiam para o interior do estado nesta epoca santos era conhecido como o porto da morte em virtude das diversas epidemias de doencas tropicais que acometiam periodicamente a populacao acirradas pela falta de saneamento basico e condicoes precarias de moradia e higiene da populacao bem como pela natureza alagadica da cidade este cenario alterou se somente com as obras sanitarias realizadas por saturnino de britto a mando do entao secretario do interior do estado vicente de carvalho que criou os canais de drenagem que sao hoje marcos da paisagem urbana santista em 1897 santos teve a primeira greve organizada do pais deflagrada por um acidente em um navio","original":"No início do Século XIX, Santos foi um dos principais portos brasileiros para o desembarque de imigrantes, que afluíam principalmente da Itália e do Japão. Porém, a infraestrutura da cidade e suas atividades econômicas não comportavam o acolhimento destes indivíduos, que rapidamente se distribuíam para o interior do estado. Nesta época, Santos era conhecido como o \"Porto da Morte\", em virtude das diversas epidemias de doenças tropicais que acometiam periodicamente a população, acirradas pela falta de saneamento básico e condições precárias de moradia e higiene da população, bem como pela natureza alagadiça da cidade; este cenário alterou-se somente com as obras sanitárias realizadas por Saturnino de Britto a mando do então Secretário do Interior do Estado, Vicente de Carvalho, que criou os canais de drenagem que são hoje marcos da paisagem urbana santista. Em 1897, Santos teve a primeira greve organizada do País, deflagrada por um acidente em um navio"},{"id":"doc-2ac1452fe6a0f227","porto":"santos","texto":"com o passar dos anos a estrutura foi ampliada e desenvolvida de acordo com os investimentos realizados pela cds que chegou a empregar 15 000 funcionarios alem das diversas estruturas de terminais e dos predios administrativos a cds executou diversas obras de engenharia de destaque para a epoca seja por sua dimensao ou por sua complexidade sao particularmente notaveis o aterramento de paqueta outeirinhos e a construcao da usina hidreletrica de itatinga ambas sob a direcao do engenheiro guilherme benjamin weinschenck","original":"Com o passar dos anos, a estrutura foi ampliada e desenvolvida de acordo com os investimentos realizados pela CDS, que chegou a empregar 15 000 funcionários. Além das diversas estruturas de terminais e dos prédios administrativos, a CDS executou diversas obras de engenharia de destaque para a época, seja por sua dimensão ou por sua complexidade. São particularmente notáveis o aterramento de Paquetá-Outeirinhos e a construção da Usina Hidrelétrica de Itatinga, ambas sob a direção do engenheiro Guilherme Benjamin Weinschenck"},{"id":"doc-7880e5e984c067aa","porto":"santos","texto":"a area de paqueta outeirinhos na margem direita santos entre os atuais armazens 12 e 23 que era originalmente um golfo foi aterrada para criar uma estrutura linear de cais que permitisse a atracacao de navios de maior profundidade bem como uma retroarea de armazenamento para este aterramento foi criada uma linha ferrea especial para transportar as pedras da pedreira do bairro jabaquara em uma das pontas das areas aterradas foram construidos predios para a administracao portuaria que hoje compoem a sede oficial da administracao do porto a construcao da usina hidreletrica de itatinga concluida em 1910 as margens da serra do mar foi outra obra de destaque a epoca itatinga era uma das mais importantes hidreletricas do pais em uma epoca em que poucos tinham acesso a rede eletrica eletricidade gerada por ela foi utilizada inclusive na construcao da usina hidreletrica de henry borden em cubatao por conta da localizacao da usina isolada no meio da mata atlantica a 7 km de bertioga foi construida uma vila de apoio para a residencia de funcionarios que trabalham em sua manutencao e operacao na qual chegaram a residir 70 familias simultaneamente mesmo sendo o efetivo de pessoal atual muito menor ainda hoje a usina fornece eletricidade para a operacao do porto e para suas instalacoes administrativas embora modernizada parte de sua estrutura como as turbinas por exemplo sao parte do equipamento original em continua operacao ha mais de cem anos","original":"A área de Paquetá-Outeirinhos, na margem direita (Santos), entre os atuais armazéns 12 e 23, que era originalmente um golfo, foi aterrada para criar uma estrutura linear de cais que permitisse a atracação de navios de maior profundidade, bem como uma retroárea de armazenamento. Para este aterramento, foi criada uma linha férrea especial para transportar as pedras da pedreira do bairro Jabaquara. Em uma das pontas das áreas aterradas, foram construídos prédios para a administração portuária, que hoje compõem a sede oficial da administração do porto.A construção da Usina Hidrelétrica de Itatinga, concluída em 1910, às margens da Serra do Mar, foi outra obra de destaque. À época, Itatinga era uma das mais importantes hidrelétricas do país, em uma época em que poucos tinham acesso à rede elétrica; eletricidade gerada por ela foi utilizada inclusive na construção da usina hidrelétrica de Henry Borden, em Cubatão. Por conta da localização da usina, isolada no meio da Mata Atlântica a 7 Km de Bertioga, foi construída uma vila de apoio para a residência de funcionários que trabalham em sua manutenção e operação, na qual chegaram a residir 70 famílias simultaneamente. Mesmo sendo o efetivo de pessoal atual muito menor, ainda hoje a usina fornece eletricidade para a operação do porto e para suas instalações administrativas. Embora modernizada, parte de sua estrutura, como as turbinas por exemplo, são parte do equipamento original, em contínua operação há mais de cem anos"},{"id":"doc-79bf3835d1d77ed8","porto":"santos","texto":"apos o vencimento da concessao em outubro de 1980 a administracao do porto e seu acervo voltaram ao dominio do governo federal mais especificamente a entao companhia docas do estado de sao paulo codesp sociedade de economia mista que ate marco de 1990 permaneceu sob controle da empresa de portos do brasil s a portobras","original":"Após o vencimento da concessão, em outubro de 1980, a administração do porto e seu acervo voltaram ao domínio do Governo Federal, mais especificamente à então Companhia Docas do Estado de São Paulo (Codesp), sociedade de economia mista que, até março de 1990, permaneceu sob controle da Empresa de Portos do Brasil S.A. (Portobras"},{"id":"doc-87a504ca426bc8ab","porto":"santos","texto":"a codesp operou o porto em regime de monopolio ate a promulgacao da lei 8 630 93 que instituiu o ambiente concorrencial por meio do arrendamento das areas portuarias para terminais passando os portos federais brasileiros a operar por meio de um sistema conhecido como landlord port com a instituicao deste sistema a codesp e consequentemente o governo federal passou a exercer apenas a funcao administrativa do complexo portuario conhecida como autoridade portuaria passando a operacao as maos de terminais portuarios privados este conjunto de areas primarias operacionais e secundarias administrativas passa a configurar o porto organizado area sob a jurisdicao da autoridade portuaria com a instituicao da lei a mao de obra operacional da codesp foi transferida para o orgao gestor de mao de obra ogmo e a codesp passou a contar com um efetivo de aproximadamente 1 500 funcionarios distribuidos em funcoes administrativas de fiscalizacao e de guarda portuaria a legislacao foi atualizada quando da promulgacao da lei 12 815 2013","original":"A Codesp operou o porto em regime de monopólio até a promulgação da Lei 8.630/93, que instituiu o ambiente concorrencial por meio do arrendamento das áreas portuárias para terminais, passando os portos federais brasileiros a operar por meio de um sistema conhecido como Landlord Port. Com a instituição deste sistema, a Codesp (e consequentemente o Governo Federal) passou a exercer apenas a função administrativa do complexo portuário (conhecida como Autoridade Portuária), passando a operação às mãos de terminais portuários privados. Este conjunto de áreas, primárias (operacionais) e secundárias (administrativas), passa a configurar o Porto Organizado, área sob a jurisdição da Autoridade Portuária. Com a instituição da lei, a mão de obra operacional da Codesp foi transferida para o Órgão Gestor de Mão de Obra (Ogmo), e a Codesp passou a contar com um efetivo de aproximadamente 1 500 funcionários, distribuídos em funções administrativas, de fiscalização e de Guarda Portuária. A legislação foi atualizada quando da promulgação da Lei 12 815/2013"},{"id":"doc-ddecd989aeefe128","porto":"santos","texto":"em 15 12 2010 o porto de santos recebeu da comissao nacional de seguranca publica de portos terminais e vias navegaveis conportos o certificado internacional de implantacao do isps code garantindo que a monitoracao fiscalizacao e controle dos meios de acesso as areas primarias e secundarias estao adequados as exigencias internacionais de seguranca portuaria","original":"Em 15/12/2010, o Porto de Santos recebeu da Comissão Nacional de Segurança Pública de Portos, Terminais e Vias Navegáveis (Conportos) o certificado internacional de implantação do ISPS Code, garantindo que a monitoração, fiscalização e controle dos meios de acesso às áreas primárias e secundárias estão adequados às exigências internacionais de segurança portuária"},{"id":"doc-cd70e786cc51ac19","porto":"santos","texto":"no segundo semestre de 2018 o governo federal realizou a compra das acoes dos acionistas minoritarios da codesp buscando a nacionalizacao da empresa este processo foi concluido com sucesso porem a codesp permanece como sociedade de economia mista uma vez que a prefeitura de santos e detentora de uma pequena parcela de acoes da empresa e a legislacao atual nao permite a negociacao de acoes entre diferentes esferas de governo","original":"No segundo semestre de 2018, o Governo Federal realizou a compra das ações dos acionistas minoritários da Codesp, buscando a nacionalização da empresa. Este processo foi concluído com sucesso, porém a Codesp permanece como sociedade de economia mista, uma vez que a Prefeitura de Santos é detentora de uma pequena parcela de ações da empresa, e a legislação atual não permite a negociação de ações entre diferentes esferas de governo"},{"id":"doc-92129bb62291df53","porto":"santos","texto":"a partir de outubro de 2019 a codesp iniciou um processo de remodelagem de sua marca passando a adotar o nome fantasia santos port authority spa em marco de 2020 a empresa alterou tambem sua razao social para autoridade portuaria de santos","original":"A partir de outubro de 2019, a Codesp iniciou um processo de remodelagem de sua marca, passando a adotar o nome fantasia Santos Port Authority (SPA). Em março de 2020, a empresa alterou também sua razão social, para \"Autoridade Portuária de Santos"},{"id":"doc-9f69a04e49fbc49b","porto":"santos","texto":"em 18 de outubro de 2013 ocorreu o pior incendio da historia do porto ate aquela data as chamas se iniciaram no sistema de esteiras de transporte de dois armazens de acucar da empresa copersucar deixando quatro trabalhadores feridos e queimando cerca de 180 mil toneladas de acucar foram necessarios dez caminhoes do corpo de bombeiros um caminhao da petrobras dois carros da guarda portuaria um helicoptero aguia da policia militar e uma equipe vindo de sao paulo para combater o fogo o acucar carbonizado junto com a agua utilizada no combate ao incendio atingiram o estuario de santos contaminando as aguas e matando milhares de peixes","original":"Em 18 de outubro de 2013, ocorreu o pior incêndio da história do Porto até aquela data. As chamas se iniciaram no sistema de esteiras de transporte de dois armazéns de açúcar da empresa Copersucar, deixando quatro trabalhadores feridos e queimando cerca de 180 mil toneladas de açúcar. Foram necessários dez caminhões do Corpo de Bombeiros, um caminhão da Petrobras, dois carros da Guarda Portuária, um helicóptero Águia da Polícia Militar e uma equipe vindo de São Paulo para combater o fogo. O açúcar carbonizado junto com a água utilizada no combate ao incêndio atingiram o estuário de Santos, contaminando as águas e matando milhares de peixes"},{"id":"doc-3630de3baf43985a","porto":"santos","texto":"no ano seguinte dia 03 de agosto de 2014 um incendio de grandes proporcoes atingiu outro armazem de acucar no porto de santos o armazem x terminal 19 operado pela rumo logistica do grupo cosan tinha capacidade para estocar 18 mil toneladas de acucar sendo que 15 mil toneladas estavam armazenadas e foram completamente destruidas pelas chamas as chamas iniciadas pela tarde so foram extintas na madrugada do dia seguinte apos a atuacao de doze caminhoes do corpo de bombeiros cerca de 100 funcionarios trabalhavam no local durante o acidente mas ninguem foi ferido","original":"No ano seguinte, dia 03 de agosto de 2014, um incêndio de grandes proporções atingiu outro armazém de açúcar no Porto de Santos. O armazém X (terminal 19), operado pela Rumo Logística do grupo Cosan, tinha capacidade para estocar 18 mil toneladas de açúcar, sendo que 15 mil toneladas estavam armazenadas e foram completamente destruídas pelas chamas. As chamas iniciadas pela tarde, só foram extintas na madrugada do dia seguinte, após a atuação de doze caminhões do corpo de bombeiros. Cerca de 100 funcionários trabalhavam no local durante o acidente, mas ninguém foi ferido"},{"id":"doc-895fa264b77fe72a","porto":"santos","texto":"cerca de dois meses depois no dia 20 de outubro de 2014 outro incendio destruiu um armazem inteiro de acucar da empresa cargill na margem esquerda do porto de santos no guaruja as chamas foram controladas pelos bombeiros antes de atingirem outro armazem nenhuma pessoa foi ferida no acidente","original":"Cerca de dois meses depois, no dia 20 de outubro de 2014, outro incêndio destruiu um armazém inteiro de açúcar da empresa Cargill na margem esquerda do Porto de Santos no Guarujá. As chamas foram controladas pelos bombeiros antes de atingirem outro armazém. Nenhuma pessoa foi ferida no acidente"},{"id":"doc-be66af09907c9837","porto":"santos","texto":"no dia 2 de abril de 2015 principiou um incendio em um dos terminais de armazenamento de combustiveis e fertilizantes liquidos no complexo da alemoa os tanques onde ocorreu o incendio sao ligados por dutos ao terminal portuario e pertenciam a empresa ultracargo as chamas duraram mais de uma semana e durante este periodo a agua utilizada no combate ao incendio contaminada com combustivel e outros produtos quimicos fluiu para o estuario causando alteracao da temperatura e saturacao do oxigenio o que causou a morte de milhares de peixes apesar de nao ter havido registro de vitimas foi um dos maiores e mais longos incendios a acometer o complexo portuario o combate a ocorrencia teve ajuda federal da fab e da infraero sendo inclusive utilizada uma espuma especial gelatinosa conhecida como cold fire que foi fornecida pela petrobras especifica para o combate a incendios em combustiveis","original":"No dia 2 de abril de 2015, principiou um incêndio em um dos terminais de armazenamento de combustíveis e fertilizantes líquidos no complexo da Alemoa. Os tanques onde ocorreu o incêndio são ligados por dutos ao terminal portuário e pertenciam à empresa Ultracargo. As chamas duraram mais de uma semana, e durante este período a água utilizada no combate ao incêndio, contaminada com combustível e outros produtos químicos, fluiu para o estuário, causando alteração da temperatura e saturação do oxigênio, o que causou a morte de milhares de peixes. Apesar de não ter havido registro de vítimas, foi um dos maiores e mais longos incêndios a acometer o complexo portuário. O combate à ocorrência teve ajuda federal da FAB e da Infraero, sendo inclusive utilizada uma espuma especial gelatinosa conhecida como cold fire, que foi fornecida pela Petrobras, específica para o combate a incêndios em combustíveis"},{"id":"doc-0216e3f17d8941f2","porto":"santos","texto":"o estuario do porto de santos e um braco d agua natural no qual foram instalados os terminais de carga sua margem direita compreende a area insular da cidade de santos e sua margem esquerda parte de cubatao a area continental de santos e a ilha de santo amaro que compoe o municipio do guaruja nao houve aterramentos ou expansoes fisicas da estrutura terrestre com a excecao dos atuais terminais acucareiros localizados na area de paqueta outeirinhos","original":"O estuário do Porto de Santos é um braço d'água natural, no qual foram instalados os terminais de carga. Sua margem direita compreende a área insular da cidade de Santos, e sua margem esquerda, parte de Cubatão, a área continental de Santos e a Ilha de Santo Amaro, que compõe o município do Guarujá. Não houve aterramentos ou expansões físicas da estrutura terrestre, com a exceção dos atuais terminais açucareiros, localizados na área de Paquetá-Outeirinhos"},{"id":"doc-6a4c8a90c1269b98","porto":"xangai","texto":"o porto de xangai e um porto de terminais maritimo de aguas profundas e fluviais esta localizado nas redondezas da cidade chinesa de xangai e o porto mais ativo do mundo em toneladas transportadas o porto pode ser caracterizado como maritimo ou fluvial devido ao fato de tanto o mar da china oriental e a baia de hangzhou quanto os rios yangtze e huangpu serem usados para o aportamento dos navios","original":"O Porto de Xangai é um porto de terminais marítimo de águas profundas e fluviais está localizado nas redondezas da cidade chinesa de Xangai. É o  porto mais ativo do mundo em toneladas transportadas. O porto pode ser caracterizado como marítimo ou fluvial, devido ao fato de tanto o Mar da China Oriental e a Baía de Hangzhou quanto os rios Yangtzé e Huangpu serem usados para o aportamento dos navios"},{"id":"doc-d0ed531787149512","porto":"xangai","texto":"em 2016 o porto de xangai estabeleceu um recorde historico ao lidar com mais de 37 milhoes de teus","original":"Em 2016, o porto de Xangai estabeleceu um recorde histórico ao lidar com mais de 37 milhões de TEUs"},{"id":"doc-5485d2abaff10c59","porto":"xangai","texto":"o porto de xangai e banhado pelo mar da china oriental a leste e a baia de hangzhou ao sul inclui as confluencias do rio yangtze o rio huangpu que entra no rio yangtze e o rio qiantang","original":"O porto de Xangai é banhado pelo Mar da China Oriental, a leste, e a Baía de Hangzhou, ao sul. Inclui as confluências do rio Yangtze, o rio Huangpu (que entra no rio Yangtze) e o rio Qiantang"},{"id":"doc-d1794bb991a87091","porto":"xangai","texto":"o porto e administrado e operado pela shanghai international port group co ltd que substituiu a shanghai port authority em 2003 a sipg e uma empresa publica da china na qual o governo de xangai e detentor de 44 23 das acoes","original":"O porto é administrado e operado pela Shanghai International Port Group Co., Ltd., que substituiu a Shanghai Port Authority em 2003.  A SIPG é uma empresa pública da China, na qual o Governo de Xangai é detentor de 44,23% das ações"},{"id":"doc-0279001a1a60b9ae","porto":"xangai","texto":"a historia do porto de xangai e paralela a da cidade de mesmo nome embora nao haja evidencia de assentamentos a partir de 5000 a c sera a partir da dinastia han e especialmente durante os seculos v e vii d c quando xangai vai se tornar uma pequena vila de pescadores e produtores de sal tendo a necessidade de uma extensao alem do mar no ano 1172 no entanto nao aconteceu ate o seculo xii quando a cidade se tornou um importante centro de algodao nestes estagios iniciais o porto de xangai estava localizado na foz do rio wusong e na do rio huangpu","original":"A história do porto de Xangai é paralela à da cidade de mesmo nome. Embora não haja evidência de assentamentos a partir de 5000 a.C., será a partir da Dinastia Han e, especialmente, durante os séculos V e VII d.C., quando Xangai vai se tornar uma pequena vila de pescadores e produtores de sal, tendo a necessidade de uma extensão além do mar no ano 1172. No entanto, não aconteceu até o século XII, quando a cidade se tornou um importante centro de algodão. Nestes estágios iniciais, o porto de Xangai estava localizado na foz do rio Wusong, e na do rio Huangpu"},{"id":"doc-a10adea04287090a","porto":"xangai","texto":"a dinastia ming 1368 1644 ofereceu um avanco para a cidade de xangai os imperadores dessa dinastia foram responsaveis pela dragagem do rio huangpu para melhorar a passagem existente e ir movendo a ao longo do rio huangpu para o local atual alem disso construiram de uma muralha ao redor da cidade para deter o ataque dos piratas japoneses wokou","original":"A dinastia Ming (1368-1644) ofereceu um avanço para a cidade de Xangai, os imperadores dessa dinastia foram responsáveis pela dragagem do rio Huangpu para melhorar a passagem existente e ir movendo-a ao longo do rio Huangpu para o local atual. Além disso, construíram de uma muralha ao redor da cidade para deter o ataque dos piratas japoneses Wokou"},{"id":"doc-3920f91f96c67fe8","porto":"xangai","texto":"a dinastia qing 1644 1912 foi responsavel por elevar o porto de xangai como o mais importante na regiao do yangtze devido a dois fatores primeiro a permissao para aceitar embarcacoes oceanicas e ter controle exclusivo do comercio exterior da provincia de jiangsu em 1842 comeca a historia do porto como a conhecemos hoje ja que foi naquele ano quando o tratado de nanquim foi assinado o que encerrou a primeira guerra do opio 1839 1842 entre a china e o imperio britanico como resultado deste tratado alem de muitas outras coisas incluindo a famosa cessao da ilha de hong kong o governo chines foi forcado a abrir cinco portos internacionais incluindo o de xangai para o comercio internacional a entrada de potencias europeias e americanas franca os estados unidos e o imperio britanico incentivaram o desenvolvimento do porto tornando se no inicio do seculo xx o maior porto do extremo oriente","original":"A dinastia Qing (1644-1912) foi responsável por elevar o porto de Xangai como o mais importante na região do Yangtze, devido a dois fatores: primeiro, a permissão para aceitar embarcações oceânicas e ter controle exclusivo do comércio exterior da província de Jiangsu. Em 1842 começa a história do porto como a conhecemos hoje, já que foi naquele ano quando o Tratado de Nanquim foi assinado, o que encerrou a Primeira Guerra do Ópio (1839-1842) entre a China e o Império Britânico. Como resultado deste tratado, além de muitas outras coisas, incluindo a famosa cessão da ilha de Hong Kong, o governo chinês foi forçado a abrir cinco portos internacionais, incluindo o de Xangai, para o comércio internacional. A entrada de potências europeias e americanas (França, os Estados Unidos e o Império Britânico) incentivaram o desenvolvimento do porto, tornando-se, no início do século XX, o maior porto do Extremo Oriente"},{"id":"doc-f0dc2e2894423c43","porto":"xangai","texto":"a rebeliao de taiping 1850 1864 reconhecida como o maior confronto armado ate a segunda guerra mundial teve efeitos devastadores na cidade de xangai no entanto a area ocupada por estrangeiros onde o porto estava localizado mal foi tocada","original":"A rebelião de Taiping (1850-1864), reconhecida como o maior confronto armado até a Segunda Guerra Mundial, teve efeitos devastadores na cidade de Xangai. No entanto, a área ocupada por estrangeiros, onde o porto estava localizado, mal foi tocada"},{"id":"doc-db8517f307829d06","porto":"xangai","texto":"entre 1860 e 1895 toda a china passou por um processo de modernizacao e desenvolvimento no qual o porto de shanghai foi beneficiado mas foi paralisado pela guerra contra o japao e a subsequente queda da dinastia qing 1911 comecou um periodo de instabilidade economica e social","original":"Entre 1860 e 1895, toda a China passou por um processo de modernização e desenvolvimento no qual o porto de Shanghai foi beneficiado, mas foi paralisado pela guerra contra o Japão e a subsequente queda da dinastia Qing (1911), começou um período de instabilidade econômica e social"},{"id":"doc-56713a5bb7e8f872","porto":"xangai","texto":"apos a batalha de xangai 1937 o japao assume o controle da cidade e a partir deste momento a cidade perdera gradualmente seu poder economico e financeiro a invasao japonesa comecara a segunda guerra mundial na asia xangai permanecera sob dominio japones ate o final da guerra sendo durante este periodo um importante refugio dos cidadaos europeus o ponto culminante do conflito nao envolveu uma melhoria economica para xangai porque ele seguiu a tomada do poder pelo partido comunista 1949 que reduziu drasticamente todo o comercio exterior e fuga de capitais produzidos para hong kong","original":"Após a Batalha de Xangai (1937), o Japão assume o controle da cidade e, a partir deste momento, a cidade perderá gradualmente seu poder econômico e financeiro. A invasão japonesa começará a Segunda Guerra Mundial na Ásia. Xangai permanecerá sob domínio japonês até o final da guerra, sendo durante este período um importante refúgio dos cidadãos europeus. O ponto culminante do conflito não envolveu uma melhoria econômica para Xangai, porque ele seguiu a tomada do poder pelo Partido Comunista (1949), que reduziu drasticamente todo o comércio exterior e fuga de capitais produzidos para Hong Kong"},{"id":"doc-28a6b0ff0368e381","porto":"xangai","texto":"em 1991 o governo central permitiu que xangai iniciasse uma reforma economica desde entao o porto de xangai se desenvolveu em ritmo acelerado em 2005 o porto terminal de aguas profundas de yangshan foi construido nas ilhas yangshan um grupo de ilhas na baia de hangzhou ligadas a xangai pela ponte de donghai este desenvolvimento permitiu que o porto superasse as condicoes de aguas rasas em sua localizacao atual e rivalizasse com outro porto de aguas profundas o vizinho porto de ningbo zhoushan","original":"Em 1991, o governo central permitiu que Xangai iniciasse uma reforma econômica. Desde então, o porto de Xangai se desenvolveu em ritmo acelerado. Em 2005, o porto/terminal de águas profundas de Yangshan foi construído nas ilhas Yangshan, um grupo de ilhas na Baía de Hangzhou, ligadas a Xangai pela Ponte de Donghai. Este desenvolvimento permitiu que o porto superasse as condições de águas rasas em sua localização atual, e rivalizasse com outro porto de águas profundas, o vizinho porto de Ningbo-Zhoushan"},{"id":"doc-ef7f4ea1250cd201","porto":"xangai","texto":"o porto de xangai e administrado pela shanghai international port group sipg uma empresa publica na qual 45 das acoes pertencem ao governo municipal de xangai quanto ao trafego de conteineres ele e composto de tres outros portos","original":"O porto de Xangai é administrado pela Shanghai International Port Group (SIPG), uma empresa pública na qual 45% das ações pertencem ao governo municipal de Xangai. Quanto ao tráfego de contêineres, ele é composto de três outros portos"},{"id":"doc-65b06580ad1d7e3a","porto":"xangai","texto":"o porto de xangai tambem possui um numero significativo de areas nao destinadas a conteineres no entanto como elas desempenham um papel regional e sao os conteineres que fizeram de xangai como um dos maiores portos em escala global parece correto focar nessa parte apesar disso existe uma importancia relevantes destas outras areas tambem gerenciadas pela sipg sao localizadas em terminais dentro dos portos de wusongkuo waigaoqiao e luojing sao usadas como uma distribuicao para o interior do pais sendo um pilar do desenvolvimento economico da regiao do yangtze entre seus terminais destacam se","original":"O porto de Xangai também possui um número significativo de áreas não destinadas a contêineres. No entanto, como elas desempenham um papel regional, e são os contêineres que fizeram de Xangai como um dos maiores portos em escala global, parece correto focar nessa parte. Apesar disso, existe uma importância relevantes destas outras áreas: Também gerenciadas pela SIPG, são localizadas em terminais dentro dos portos de Wusongkuo, Waigaoqiao e Luojing. São usadas como uma distribuição para o interior do país, sendo um pilar do desenvolvimento econômico da região do Yangtze. Entre seus terminais destacam-se"},{"id":"doc-cfc6cc91aacf0b8d","porto":"xangai","texto":"sipg carvao responsavel pelo transporte de 30 milhoes de toneladas de carvao areia e brita anualmente","original":"SIPG Carvão: responsável pelo transporte de 30 milhões de toneladas de carvão, areia e brita anualmente"},{"id":"doc-91a6d0af42b298da","porto":"xangai","texto":"sipg zhanghuabang company usada para transportar aco ferro produtos pesados e ate conteineres e um dos terminais mais bem equipados do porto","original":"SIPG Zhanghuabang Company: usada para transportar aço, ferro, produtos pesados e até contêineres. É um dos terminais mais bem equipados do porto"},{"id":"doc-7e5ba3b3ebe57c3e","porto":"xangai","texto":"sipg jungong road branch aco ferro e veiculos sao suas principais mercadorias","original":"SIPG Jungong Road Branch: aço, ferro e veículos são suas principais mercadorias"},{"id":"doc-54eb3169714cc9ef","porto":"xangai","texto":"sipg baoshan terminal branch transporta e armazena tanto cargas a granel quanto conteineres","original":"SIPG Baoshan Terminal Branch: transporta e armazena tanto cargas a granel quanto contêineres"},{"id":"doc-d5e0c45cb91c9866","porto":"xangai","texto":"sipg longwu branch empresa subsidiaria sipg luojing especializada em cargas a granel","original":"SIPG Longwu Branch • Empresa Subsidiária SIPG Luojing: especializada em cargas a granel"},{"id":"doc-9775d6ed4fab1088","porto":"xangai","texto":"terminais da xangai luojing ore co ltd so transporta aco","original":"Terminais da Xangai Luojing Ore. Co., Ltd: só transporta aço"},{"id":"doc-87eae23e5a597432","porto":"xangai","texto":"wusongkou o porto mais antigo de xangai esta localizado na foz do rio huangpu na do rio yangtze o porto e responsavel pelo comercio local ao longo do rio yangtze e e o principal porto de passageiros da cidade o porto tem um comprimento de 2 3 km no qual ha 10 bercos 11 metros de calado e uma area de 550 mil metros quadrados para armazenar conteineres atualmente a cidade de xangai com o objetivo de alcancar uma melhoria ambiental e aumentar o turismo esta aplicando uma politica de recuperacao dos espacos do rio que traz entre muitas outras coisas um iate clube isso esta causando uma diminuicao na atividade de servicos no porto o que significa que parte da logistica do porto se move para o vizinho waigaoqiao","original":"Wusongkou, o porto mais antigo de Xangai, está localizado na foz do rio Huangpu, na do rio Yangtze. O porto é responsável pelo comércio local, ao longo do rio Yangtze, e é o principal porto de passageiros da cidade. O porto tem um comprimento de 2,3 km, no qual há 10 berços, 11 metros de calado e uma área de 550 mil metros quadrados para armazenar contêineres. Atualmente a cidade de Xangai, com o objetivo de alcançar uma melhoria ambiental e aumentar o turismo, está aplicando uma política de recuperação dos espaços do rio, que traz, entre muitas outras coisas, um iate clube. Isso está causando uma diminuição na atividade de serviços no porto, o que significa que parte da logística do porto se move para o vizinho, Waigaoqiao"}],"necessidades":[{"q":"q01","consulta":"movimentacao cargas importancia economica portos","necessidade":"O pesquisador quer entender por que a movimentação de cargas nos portos estudados é economicamente relevante, para a região ou para o país.","escopo":"Mencao isolada a 'carga' sem explicar a relevancia economica nao conta."},{"q":"q02","consulta":"movimentacao conteineres santos xangai teus","necessidade":"O pesquisador quer comparar o volume de contêineres movimentados, em TEU, entre o Porto de Santos e o Porto de Xangai.","escopo":"Descricao generica do porto sem numero de TEU nao conta."},{"q":"q03","consulta":"historia desenvolvimento porto santos xangai roterda","necessidade":"O pesquisador quer uma visão histórica de como cada um dos três portos se desenvolveu ao longo do tempo.","escopo":"Um evento historico isolado sem contexto de desenvolvimento nao conta."},{"q":"q04","consulta":"expansao construcao terminais porto","necessidade":"O pesquisador quer saber como e quando novos terminais foram construídos ou expandidos.","escopo":"Descricao estatica de um terminal ja existente, sem mencao a obra ou expansao, nao conta."},{"q":"q05","consulta":"profundidade calado dragagem portos","necessidade":"O pesquisador quer comparar profundidade de calado e obras de dragagem entre os portos.","escopo":"Mencao a 'acesso' em geral, sem numero de profundidade ou calado, nao conta."},{"q":"q06","consulta":"acesso ferroviario rodoviario transporte porto","necessidade":"O pesquisador quer entender quais modais de transporte terrestre dão acesso a cada porto.","escopo":"Transporte maritimo (navios) nao conta; tem que ser acesso terrestre."},{"q":"q07","consulta":"tipos cargas movimentadas portos","necessidade":"O pesquisador quer saber quais tipos de carga (granel sólido, granel líquido, contêiner etc.) cada porto movimenta.","escopo":"Um incidente ou evento envolvendo carga nao conta; precisa ser classificacao/composicao da carga."},{"q":"q08","consulta":"administracao autoridade portuaria santos xangai","necessidade":"O pesquisador quer entender quem administra cada porto e como essa administração mudou ao longo do tempo.","escopo":"Mencao a empresa que opera um terminal especifico nao conta; precisa ser a autoridade portuaria do complexo."},{"q":"q09","consulta":"terminais portuarios capacidade infraestrutura","necessidade":"O pesquisador quer dados de capacidade (área, calado, número de guindastes) dos terminais.","escopo":"Mencao generica a 'terminal' sem numero de capacidade ou infraestrutura nao conta."},{"q":"q10","consulta":"porto desenvolvimento economico regiao","necessidade":"O pesquisador quer entender o papel do porto no desenvolvimento econômico da região ao seu redor.","escopo":"Foco tem que ser impacto economico regional, nao a historia do porto em si."},{"q":"q11","consulta":"porto comercio exterior exportacoes importacoes","necessidade":"O pesquisador quer entender o papel dos portos no comércio exterior (exportação e importação).","escopo":"Comercio domestico/interno nao conta."},{"q":"q12","consulta":"porto santos industria cubatao sao paulo","necessidade":"O pesquisador quer entender a relação entre o Porto de Santos e o polo industrial de Cubatão/SP.","escopo":"Mencao a Cubatao sem ligacao com industria ou porto nao conta."},{"q":"q13","consulta":"historia administracao companhia docas codesp santos","necessidade":"O pesquisador quer a trajetória administrativa específica de CDS/CODESP/SPA no Porto de Santos.","escopo":"Exclusivo de Santos; mencao a Xangai ou Roterda nao conta aqui."},{"q":"q14","consulta":"incendios acidentes porto santos terminais","necessidade":"O pesquisador quer levantar os incêndios e acidentes ocorridos no Porto de Santos.","escopo":"Mencao a seguranca/certificacao sem um evento concreto de acidente nao conta."},{"q":"q15","consulta":"incendio porto santos impacto ambiental contaminacao peixes","necessidade":"O pesquisador quer o impacto ambiental específico dos incêndios de Santos: contaminação da água, morte de peixes.","escopo":"O incendio em si, sem mencao ao impacto ambiental, nao conta."},{"q":"q16","consulta":"historia desenvolvimento crescimento porto xangai","necessidade":"O pesquisador quer a trajetória histórica de crescimento do Porto de Xangai.","escopo":"Exclusivo de Xangai (nao Santos, nao Roterda)."},{"q":"q17","consulta":"yangshan expansao terminal aguas profundas xangai","necessidade":"O pesquisador quer detalhes da construção e expansão do terminal de águas profundas de Yangshan.","escopo":"Outros terminais de Xangai fora de Yangshan nao contam."},{"q":"q18","consulta":"terminais wusongkou waigaoqiao yangshan xangai","necessidade":"O pesquisador quer comparar os diferentes terminais e portos internos que compõem o complexo de Xangai.","escopo":"Precisa citar nominalmente pelo menos um terminal, nao so 'terminais' de forma generica."},{"q":"q19","consulta":"porto roterda transporte europa alemanha reno mosa","necessidade":"O pesquisador quer entender o papel do Porto de Roterdã como ponto de transporte para o interior da Europa.","escopo":"Exclusivo de Roterda."},{"q":"q20","consulta":"santos xangai roterda cargas conteineres","necessidade":"O pesquisador quer uma comparação geral entre os três portos em volume de carga e contêineres.","escopo":"Precisa mencionar pelo menos dois dos tres portos com dado comparavel."}],"qrels":{"q12":{"doc-543790f4a0744d86":1,"doc-4a66b7c1a6d42c6f":0},"q04":{"doc-c97f55cd190b8eda":2,"doc-2ac1452fe6a0f227":1,"doc-9775d6ed4fab1088":0,"doc-4a66b7c1a6d42c6f":1},"q01":{"doc-eb2430c7a98d9748":2,"doc-54eb3169714cc9ef":0,"doc-d5e0c45cb91c9866":0},"q17":{"doc-28a6b0ff0368e381":2,"doc-6a4c8a90c1269b98":1,"doc-54eb3169714cc9ef":0},"q08":{"doc-92129bb62291df53":2,"doc-87a504ca426bc8ab":1,"doc-79bf3835d1d77ed8":2},"q03":{"doc-09c80f2d1ecbbb22":0,"doc-fecae25906e7b91c":0},"q13":{"doc-79bf3835d1d77ed8":0},"q20":{"doc-543790f4a0744d86":0,"doc-fecae25906e7b91c":0},"q11":{"doc-3920f91f96c67fe8":2,"doc-a3276b08b5b119d8":2,"doc-56713a5bb7e8f872":1},"q05":{"doc-21b74f8cdba51a41":1},"q16":{"doc-d0ed531787149512":0,"doc-28a6b0ff0368e381":2,"doc-3920f91f96c67fe8":2,"doc-e6e35237be5c264b":1},"q14":{"doc-895fa264b77fe72a":2,"doc-be66af09907c9837":2,"doc-0216e3f17d8941f2":0,"doc-543790f4a0744d86":0},"q18":{"doc-28a6b0ff0368e381":2,"doc-87eae23e5a597432":2,"doc-65b06580ad1d7e3a":2},"q02":{"doc-543790f4a0744d86":0},"q07":{"doc-7840f74f5d343cdd":0},"q09":{"doc-543790f4a0744d86":0,"doc-a3276b08b5b119d8":1},"q15":{"doc-be66af09907c9837":2,"doc-9f69a04e49fbc49b":2,"doc-87eae23e5a597432":1},"q06":{"doc-5c233ac3a9ebb8e4":2,"doc-37b06b360d428b99":0,"doc-f5d88d23b5724d1d":0},"q10":{"doc-65b06580ad1d7e3a":2,"doc-3920f91f96c67fe8":2,"doc-db8517f307829d06":2},"q19":{"doc-fecae25906e7b91c":0}}}</script>
+<script>
+/* ==========================================================================
+   motor.js  --  o motor do grupo Enem (motor08 + config.R), traduzido do R
+   Fonte: fractalarea/pi3-motor-de-busca motor/motor08.R (limpar, preparar,
+   montar, idf_bm25, bm25, ranking_bm25), guias da Aula 08 (proximidade,
+   reordenar, rerank_prox, ranking_final) e estrutura/codigos/aula08_frase.R
+   (frase, aspas, busca_aspas). Parametros: estrutura/codigos/config.R.
+   ========================================================================== */
+(function (raiz) {
+  'use strict';
+
+  // config.R do grupo (Aulas 03 a 08)
+  const CFG = {
+    limpar: true,
+    acentos: 'translit',
+    stopwords: ['de', 'o', 'a', 'e', 'um', 'por', 'como', 'que', 'da', 'do'],
+    k1: 1.2,
+    b: 0.75,
+    limiar: 2,
+    prf_k: 0,
+    modelo: 'bm25',
+    rerank_k: 3,
+    janela: 3,
+  };
+
+  // limpar(x, "translit"): tira acentos, minusculas, o que nao e letra/digito vira espaco
+  const TRANSLIT_EXTRA = { 'ß': 'ss', 'æ': 'ae', 'Æ': 'AE', 'œ': 'oe', 'Œ': 'OE', 'ø': 'o', 'Ø': 'O', 'ł': 'l', 'Ł': 'L', 'đ': 'd', 'Đ': 'D' };
+  function limpar(x) {
+    let y = String(x).replace(/[ßæÆœŒøØłŁđĐ]/g, (c) => TRANSLIT_EXTRA[c]);
+    y = y.normalize('NFD').replace(/[̀-ͯ]/g, '');   // iconv ASCII//TRANSLIT
+    y = y.toLowerCase();                                      // 1) minusculas
+    y = y.replace(/[^a-z0-9 ]/g, ' ');                        // 2) nao e letra, digito ou espaco
+    y = y.replace(/\s+/g, ' ');                               // 3) espacos repetidos
+    return y.trim();                                          // 4) pontas
+  }
+
+  // preparar(texto, cfg): limpeza + quebra em espacos + tira stopwords
+  function preparar(texto, cfg) {
+    const stop = new Set(cfg.stopwords);
+    return limpar(texto).split(' ').filter((t) => t.length && !stop.has(t));
+  }
+
+  // O mesmo, mas devolvendo o que saiu (para explicar)
+  function prepararExplicado(texto, cfg) {
+    const stop = new Set(cfg.stopwords);
+    const limpo = limpar(texto);
+    const brutos = limpo.split(' ').filter((t) => t.length);
+    return {
+      limpo,
+      brutos,
+      removidas: brutos.filter((t) => stop.has(t)),
+      tokens: brutos.filter((t) => !stop.has(t)),
+    };
+  }
+
+  // montar(docs, cfg): tokens, tf, df, dl, avgdl, idf_bm25, indice invertido
+  function montar(corpus, cfg) {
+    const ix = { ids: [], tokens: {}, tf: {}, df: {}, dl: {}, postings: {}, N: corpus.length };
+    for (const d of corpus) {
+      const t = preparar(d.texto, cfg);
+      ix.ids.push(d.id);
+      ix.tokens[d.id] = t;
+      const tf = {};
+      for (const w of t) tf[w] = (tf[w] || 0) + 1;
+      ix.tf[d.id] = tf;
+      ix.dl[d.id] = t.length;
+      for (const w of Object.keys(tf)) {
+        ix.df[w] = (ix.df[w] || 0) + 1;
+        (ix.postings[w] = ix.postings[w] || []).push(d.id);
+      }
+    }
+    ix.vocab = Object.keys(ix.df).sort();
+    ix.avgdl = ix.ids.reduce((s, id) => s + ix.dl[id], 0) / ix.N;
+    ix.idf = {};
+    for (const w of ix.vocab) ix.idf[w] = Math.log((ix.N - ix.df[w] + 0.5) / (ix.df[w] + 0.5) + 1);
+    return ix;
+  }
+
+  // bm25(termos, ix, k1, b), com a parcela de cada termo guardada
+  function bm25(termos, ix, k1, b) {
+    const s = {}, parcelas = {};
+    for (const id of ix.ids) { s[id] = 0; parcelas[id] = []; }
+    for (const t of termos) {                                  // repetido conta de novo (como no R)
+      if (!(t in ix.df)) continue;                             // fora do vocabulario
+      for (const id of ix.ids) {
+        const f = ix.tf[id][t] || 0;
+        if (f === 0) continue;                                 // ausente: 0, nunca NaN
+        const K = k1 * (1 - b + b * ix.dl[id] / ix.avgdl);
+        const p = ix.idf[t] * (f * (k1 + 1)) / (f + K);
+        s[id] += p;
+        parcelas[id].push({ termo: t, f, K, idf: ix.idf[t], parcela: p });
+      }
+    }
+    return { s, parcelas };
+  }
+
+  // sort(..., decreasing = TRUE): metodo radix do R, estavel (empate fica na ordem do corpus)
+  function ordenar(ids, escore) {
+    return ids.map((id, i) => [id, i]).sort((a, b) => (escore[b[0]] - escore[a[0]]) || (a[1] - b[1])).map((x) => x[0]);
+  }
+
+  // proximidade(qt, dt, janela): pares i < j de termos diferentes, em ordem e perto
+  function proximidade(qt, dt, janela, comPares) {
+    let s = 0; const pares = [];
+    for (let i = 0; i < qt.length; i++) for (let j = 0; j < qt.length; j++) {
+      if (!(i < j && qt[i] !== qt[j])) continue;
+      const pi = [], pj = [];
+      dt.forEach((w, p) => { if (w === qt[i]) pi.push(p); if (w === qt[j]) pj.push(p); });
+      if (!pi.length || !pj.length) continue;
+      let min = Infinity, onde = null;
+      for (const b of pj) for (const a of pi) {
+        const d = b - a;
+        if (d > 0 && d <= janela && d < min) { min = d; onde = [a, b]; }
+      }
+      if (min !== Infinity) { s += 1 / min; if (comPares) pares.push({ a: qt[i], b: qt[j], dist: min, pos: onde, valor: 1 / min }); }
+    }
+    return comPares ? { s, pares } : s;
+  }
+
+  // reordenar(rk, k, sc): cabeca pelo escore do estagio 2 (empate: ordem do estagio 1) + cauda
+  function reordenar(rk, k, sc) {
+    k = Math.min(k, rk.length);
+    const top = rk.slice(0, k).map((id, i) => [id, i]);
+    top.sort((a, b) => ((sc[b[0]] || 0) - (sc[a[0]] || 0)) || (a[1] - b[1]));
+    return top.map((x) => x[0]).concat(rk.slice(k));
+  }
+
+  // aula08_frase.R: frase(qt, dt) e os trechos entre aspas
+  function frase(qt, dt) {
+    if (!qt.length) return 0;
+    let ini = []; dt.forEach((w, p) => { if (w === qt[0]) ini.push(p); });
+    for (let i = 1; i < qt.length; i++) ini = ini.filter((p) => dt[p + i] === qt[i]);
+    return ini.length;
+  }
+  function aspas(consulta) {
+    return (String(consulta).match(/"[^"]+"/g) || []).map((m) => m.replace(/"/g, ''));
+  }
+
+  // A busca inteira, devolvendo cada etapa para a interface explicar
+  function buscar(consulta, ix, cfg) {
+    const texto = String(consulta).replace(/[“”«»]/g, '"');
+    const semAspas = texto.replace(/"/g, ' ');
+    const prep = prepararExplicado(semAspas, cfg);
+    const qt = prep.tokens;
+    const termosUnicos = [...new Set(qt)];
+    const noVocab = termosUnicos.filter((t) => t in ix.df);
+    const foraVocab = termosUnicos.filter((t) => !(t in ix.df));
+
+    // Estagio 1: BM25 em todos os N documentos
+    const { s, parcelas } = bm25(qt, ix, cfg.k1, cfg.b);
+    const rk1 = ordenar(ix.ids, s);
+    const comEscore = rk1.filter((id) => s[id] > 0);
+
+    // Busca AND (Aula 03), so para informar
+    const and = noVocab.length === termosUnicos.length && termosUnicos.length
+      ? termosUnicos.map((t) => ix.postings[t]).reduce((a, b) => a.filter((x) => b.includes(x)))
+      : [];
+
+    // Filtro de frase exata (aula08_frase.R), se houver aspas
+    const frases = aspas(texto).map((f) => preparar(f, cfg)).filter((f) => f.length);
+    let rkFiltro = comEscore;
+    if (frases.length) rkFiltro = comEscore.filter((id) => frases.every((f) => frase(f, ix.tokens[id]) > 0));
+
+    // Estagio 2: proximidade nos k primeiros (rerank_prox)
+    const k = Math.min(cfg.rerank_k, rkFiltro.length);
+    const prox = {};
+    for (const id of rkFiltro.slice(0, k)) prox[id] = proximidade(qt, ix.tokens[id], cfg.janela, true);
+    const sc = {}; for (const id in prox) sc[id] = prox[id].s;
+    const rkFinal = k > 0 ? reordenar(rkFiltro, k, sc) : rkFiltro.slice();
+    // o ranking inteiro, como o R devolve (os de escore 0 no fim, na ordem do corpus): e o que o AP usa
+    const rkCompleto = frases.length ? rkFinal : rkFinal.concat(rk1.filter((id) => !(s[id] > 0)));
+
+    return { consulta: texto, prep, qt, termosUnicos, noVocab, foraVocab, escores: s, parcelas, rk1, comEscore, and, frases, rkFiltro, k, prox, rkFinal, rkCompleto };
+  }
+
+  // Metricas da Aula 5,5 (relevancia + AP), para as consultas do gabarito
+  function ap(ranking, grau, limiar) {
+    const R = Object.values(grau).filter((g) => g >= limiar).length;
+    if (R === 0) return null;
+    let acertos = 0, soma = 0;
+    ranking.forEach((id, i) => { if ((grau[id] || 0) >= limiar) { acertos++; soma += acertos / (i + 1); } });
+    return soma / R;
+  }
+
+  const Motor = { CFG, limpar, preparar, prepararExplicado, montar, bm25, ordenar, proximidade, reordenar, frase, aspas, buscar, ap };
+  if (typeof module !== 'undefined' && module.exports) module.exports = Motor; else raiz.Motor = Motor;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const DADOS = JSON.parse(document.getElementById('dados').textContent);
+  const M = window.Motor;
+  const PADRAO = Object.assign({}, M.CFG);
+  let cfg = Object.assign({}, PADRAO);
+  const IX = M.montar(DADOS.corpus, cfg);           // o indice so depende da limpeza e das stopwords (fixas)
+  const DOC = Object.fromEntries(DADOS.corpus.map((d) => [d.id, d]));
+  const PORTO = { santos: 'Porto de Santos', xangai: 'Porto de Xangai', roterda: 'Porto de Roterdã' };
+  const PORTO_CURTO = { santos: 'Santos', xangai: 'Xangai', roterda: 'Roterdã' };
+  const chave = (tokens) => [...new Set(tokens)].sort().join(' ');
+  const NEC = DADOS.necessidades.map((n) => Object.assign({}, n, {
+    chave: chave(M.preparar(n.consulta, cfg)),
+    R: Object.values(DADOS.qrels[n.q] || {}).filter((g) => g >= PADRAO.limiar).length,
+  }));
+  const USAR = NEC.filter((n) => n.R > 0);
+  const reduzMovimento = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- utilidades ----------
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const nf = (x, d = 2) => Number(x).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const curto = (id) => id.slice(4, 10);
+  const plural = (n, um, varios) => (n === 1 ? um : varios);
+  function lista(itens, conj = 'e') {
+    if (itens.length <= 1) return itens.join('');
+    return itens.slice(0, -1).join(', ') + ' ' + conj + ' ' + itens[itens.length - 1];
+  }
+  const $ = (sel, raiz = document) => raiz.querySelector(sel);
+
+  function coresDos(termos) {
+    const m = new Map();
+    termos.forEach((t, i) => m.set(t, i < 8 ? i + 1 : 0));
+    return m;
+  }
+  const chip = (t, cor, extra = '') => `<span class="chip t${cor || 0} ${extra}"><i></i>${esc(t)}</span>`;
+  function portoChip(p) { return `<span class="porto-chip ${p}"><span class="ponto"></span>${PORTO[p]}</span>`; }
+
+  // destaca os termos no texto original (com acentos): cada palavra e limpa como o motor faria
+  function realcar(texto, cores) {
+    let out = '', ult = 0;
+    const re = /[\p{L}\p{N}]+/gu; let m;
+    while ((m = re.exec(texto))) {
+      out += esc(texto.slice(ult, m.index));
+      const limpo = M.limpar(m[0]);
+      const c = limpo.split(' ').find((t) => cores.has(t));
+      out += c !== undefined ? `<mark class="m t${cores.get(c)}">${esc(m[0])}</mark>` : esc(m[0]);
+      ult = m.index + m[0].length;
+    }
+    out += esc(texto.slice(ult));
+    return out.replace(/\n+/g, '<br>');
+  }
+  function visaoMotor(id, cores) {
+    const stop = new Set(cfg.stopwords);
+    return M.limpar(DOC[id].texto).split(' ').map((w) =>
+      stop.has(w) ? `<span class="sw">${w}</span>` : cores.has(w) ? `<mark class="m t${cores.get(w)}">${w}</mark>` : w).join(' ');
+  }
+  function agrega(parcelas) {
+    const m = new Map();
+    for (const p of parcelas) {
+      const a = m.get(p.termo);
+      if (a) a.parcela += p.parcela; else m.set(p.termo, { f: p.f, K: p.K, idf: p.idf, parcela: p.parcela });
+    }
+    return m;
+  }
+  function raridade(df) {
+    if (df <= 3) return ['r3', 'muito raro'];
+    if (df <= 10) return ['r3', 'raro'];
+    if (df <= 30) return ['r2', 'médio'];
+    return ['r1', 'comum'];
+  }
+  const parTxt = (p) => p.dist === 1
+    ? `<span class="par">“<b>${esc(p.a)} ${esc(p.b)}</b>” colados</span>`
+    : `<span class="par">“<b>${esc(p.a)}</b> … <b>${esc(p.b)}</b>” a ${p.dist} posições</span>`;
+
+  function selo(g) {
+    const ic = {
+      2: '<svg viewBox="0 0 12 12"><path d="M2.5 6.2 5 8.6l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      1: '<svg viewBox="0 0 12 12"><path d="M3 6h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      0: '<svg viewBox="0 0 12 12"><path d="M3.3 3.3l5.4 5.4M8.7 3.3 3.3 8.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    };
+    if (g === undefined) return '<span class="selo gx">gabarito: não julgado</span>';
+    const nome = { 2: 'relevante (grau 2)', 1: 'parcial (grau 1)', 0: 'não relevante (grau 0)' }[g];
+    return `<span class="selo g${g}">${ic[g]}gabarito: ${nome}</span>`;
+  }
+
+  function mapCom(c) {
+    let a0 = 0, a1 = 0;
+    for (const n of USAR) {
+      const r = M.buscar(n.consulta, IX, c);
+      a0 += M.ap(r.rk1, DADOS.qrels[n.q], c.limiar);
+      a1 += M.ap(r.rkCompleto, DADOS.qrels[n.q], c.limiar);
+    }
+    return [a0 / USAR.length, a1 / USAR.length];
+  }
+
+  // sugestao da interface para termo fora do vocabulario (nao faz parte do motor)
+  function vizinhos(t) {
+    if (t.length < 5) return [];
+    for (let n = Math.min(t.length - 1, 7); n >= 4; n--) {
+      const pre = t.slice(0, n);
+      const c = IX.vocab.filter((w) => w.startsWith(pre) && w !== t).sort((a, b) => IX.df[b] - IX.df[a]).slice(0, 3);
+      if (c.length) return c;
+    }
+    return [];
+  }
+
+  // ---------- montagem da resposta ----------
+  const respostas = new Map();
+  let contador = 0;
+
+  function etapaPreparar(r, cores) {
+    const p = r.prep;
+    const chips = p.brutos.map((t) => {
+      if (cfg.stopwords.includes(t)) return `<span class="chip sw" data-dica="<b>stopword</b>: removida antes da busca">${esc(t)}</span>`;
+      if (!(t in IX.df)) return `<span class="chip fora" data-dica="<b>${esc(t)}</b> não aparece em nenhum dos 60 trechos"><i></i>${esc(t)}</span>`;
+      return chip(t, cores.get(t));
+    }).join('');
+    const partes = [`${p.brutos.length} ${plural(p.brutos.length, 'palavra', 'palavras')} → ${r.qt.length} ${plural(r.qt.length, 'termo', 'termos')} de busca`];
+    if (p.removidas.length) partes.push(`tirei ${p.removidas.length} ${plural(p.removidas.length, 'stopword', 'stopwords')} (${p.removidas.map((s) => `“${esc(s)}”`).join(', ')})`);
+    if (r.foraVocab.length) partes.push(`${lista(r.foraVocab.map((t) => `“${esc(t)}”`))} ${plural(r.foraVocab.length, 'não aparece', 'não aparecem')} em nenhum trecho`);
+    const sug = r.foraVocab.map((t) => [t, vizinhos(t)]).filter(([, v]) => v.length);
+    const sugHtml = sug.length ? `<div class="sug-termos"><span class="tag-ui">sugestão da interface</span>${sug.map(([t, v]) =>
+      `troque <b class="mono">${esc(t)}</b> por ${v.map((w) => `<button type="button" data-acao="trocar" data-de="${esc(t)}" data-para="${esc(w)}">${esc(w)}</button>`).join(' ')}`).join(' · ')}</div>` : '';
+    return `<li class="etapa"><div class="etapa-num">1</div><div class="etapa-corpo">
+      <h4>Preparar a pergunta <span class="fn">preparar(texto, cfg)</span></h4>
+      <p class="resumo">${partes.join('; ')}.</p>
+      <div class="chips">${chips || '<span class="explica">nenhuma palavra</span>'}</div>
+      ${sugHtml}
+      <details><summary>Ver a limpeza passo a passo</summary>
+        <ol class="limpeza">
+          <li><span>Pergunta como foi escrita</span><code>${esc(r.consulta)}</code></li>
+          <li><span>Sem acentos, em minúsculas, pontuação e aspas viram espaço</span><code>${esc(p.limpo) || '∅'}</code></li>
+          <li><span>Sem as stopwords do grupo (${cfg.stopwords.join(', ')})</span><code>${esc(r.qt.join(' ')) || '∅'}</code></li>
+        </ol>
+        <p class="explica" style="margin-top:8px">O motor compara palavras inteiras, letra por letra. “incêndio” e “incêndios” são termos diferentes: não há <i>stemming</i>. A sugestão acima é só da interface e não muda o motor.</p>
+      </details>
+    </div></li>`;
+  }
+
+  function etapaIndice(r, cores) {
+    const termos = r.termosUnicos;
+    const linhas = termos.map((t) => {
+      const df = IX.df[t] || 0;
+      if (!df) return `<div class="idx-linha">${chip(t, 0, 'fora')}<span class="df-barra"><i style="width:0"></i></span><span class="idx-num"><b>0</b> trechos</span></div>`;
+      const [cl, nome] = raridade(df);
+      return `<div class="idx-linha">${chip(t, cores.get(t))}<span class="df-barra" data-dica="<b>${esc(t)}</b> está em ${df} dos ${IX.N} trechos"><i style="width:${(df / IX.N * 100).toFixed(1)}%"></i></span>
+        <span class="idx-num"><b>${df}</b> ${plural(df, 'trecho', 'trechos')} · IDF <b>${nf(IX.idf[t])}</b><span class="raridade ${cl}">${nome}</span></span></div>`;
+    }).join('');
+    const porPorto = r.noVocab.map((t) => {
+      const c = { santos: 0, xangai: 0, roterda: 0 };
+      IX.postings[t].forEach((id) => c[DOC[id].porto]++);
+      return `<div>${chip(t, cores.get(t))}${Object.keys(c).map((p) => `<span class="${p}" style="display:inline-flex;gap:5px;align-items:center"><span class="ponto"></span>${PORTO_CURTO[p]} ${c[p]}</span>`).join('')}</div>`;
+    }).join('');
+    let resumo = `${r.comEscore.length} dos ${IX.N} trechos têm pelo menos um termo da pergunta`;
+    if (r.noVocab.length > 1) resumo += r.and.length ? `; ${r.and.length} ${plural(r.and.length, 'tem', 'têm')} todos (busca AND da Aula 03)` : '; nenhum tem todos (busca AND da Aula 03)';
+    return `<li class="etapa"><div class="etapa-num">2</div><div class="etapa-corpo">
+      <h4>Consultar o índice invertido <span class="fn">ix$postings · idf_bm25()</span></h4>
+      <p class="resumo">${resumo}.</p>
+      ${termos.length ? `<div class="indice">${linhas}</div>` : ''}
+      <p class="explica">Quanto mais raro o termo, mais ele vale: IDF = log((N − df + 0,5) / (df + 0,5) + 1), com N = ${IX.N} trechos e df = em quantos ele aparece.</p>
+      ${r.noVocab.length ? `<details><summary>Ver em que porto cada termo aparece</summary><div class="por-porto">${porPorto}</div></details>` : ''}
+    </div></li>`;
+  }
+
+  function etapaBM25(r, cores, c) {
+    const top = r.comEscore.slice(0, 5);
+    const max = top.length ? r.escores[top[0]] : 1;
+    const barras = top.map((id, i) => {
+      const ag = agrega(r.parcelas[id]);
+      const segs = r.noVocab.filter((t) => ag.has(t)).map((t) => {
+        const a = ag.get(t);
+        return `<span class="t${cores.get(t)}" style="flex:${a.parcela.toFixed(4)} 1 0" data-dica="<b>${esc(t)}</b>: +${nf(a.parcela)} pts (aparece ${a.f}×)"></span>`;
+      }).join('');
+      const larg = (r.escores[id] / max * 100).toFixed(2);
+      return `<div class="barra-linha"><div class="barra-rot ${DOC[id].porto}"><span class="pos">${i + 1}º</span><span class="ponto"></span>${curto(id)}</div>
+        <div class="barra-trilho"><div class="barra" style="width:calc(${larg}% - 64px * ${larg} / 100)">${segs}</div><span class="barra-val">${nf(r.escores[id])}</span></div></div>`;
+    }).join('');
+    const legenda = r.noVocab.length > 1 ? `<div class="legenda-chips">${r.noVocab.map((t) => `<span class="t${cores.get(t)}">${chip(t, cores.get(t))}</span>`).join('')}</div>` : '';
+    const cab = r.noVocab.map((t) => `<th><span class="th-termo t${cores.get(t)}"><i></i>${esc(t)}</span><br>f · parcela</th>`).join('');
+    const linhas = top.map((id, i) => {
+      const ag = agrega(r.parcelas[id]);
+      const K = c.k1 * (1 - c.b + c.b * IX.dl[id] / IX.avgdl);
+      const cels = r.noVocab.map((t) => ag.has(t) ? `<td>${ag.get(t).f} · ${nf(ag.get(t).parcela, 3)}</td>` : '<td class="zero">0 · 0</td>').join('');
+      return `<tr><td>${i + 1}º ${curto(id)}</td><td>${IX.dl[id]}</td><td>${nf(K, 3)}</td>${cels}<td class="tot">${nf(r.escores[id], 3)}</td></tr>`;
+    }).join('');
+    const idfs = r.noVocab.map((t) => `IDF(${t}) = ${nf(IX.idf[t], 3)}`).join(' · ');
+    const resumo = r.comEscore.length
+      ? `Dei uma nota a cada um dos ${IX.N} trechos somando a contribuição de cada termo. ${r.comEscore.length} ficaram acima de zero; o 1º somou <b class="num">${nf(r.escores[r.comEscore[0]])}</b> pontos.`
+      : `Dei uma nota a cada um dos ${IX.N} trechos, mas todos ficaram com zero: nenhum tem os termos da pergunta.`;
+    return `<li class="etapa"><div class="etapa-num">3</div><div class="etapa-corpo">
+      <h4>Estágio 1 · BM25 <span class="fn">ranking_bm25(consulta, ix, cfg)</span></h4>
+      <p class="resumo">${resumo}</p>
+      ${top.length ? `${legenda}<div class="barras" role="img" aria-label="Notas BM25 dos 5 primeiros trechos, divididas por termo">${barras}</div>
+      <p class="eixo-nota">Cada cor é a parte da nota que veio de um termo. Passe o mouse sobre os segmentos para ver os valores.</p>
+      <details><summary>Ver as contas do BM25</summary>
+        <div class="formula">parcela(t, d) = IDF(t) × f × (k1 + 1) / (f + K)
+K(d)         = k1 × (1 − b + b × |d| / avgdl)
+k1 = ${nf(c.k1, 2)} · b = ${nf(c.b, 2)} · avgdl = ${nf(IX.avgdl, 2)} termos
+${esc(idfs)}</div>
+        <div class="tabela-wrap" style="margin-top:8px"><table class="contas"><thead><tr><th>Trecho</th><th>|d|</th><th>K</th>${cab}<th>Nota</th></tr></thead><tbody>${linhas}</tbody></table></div>
+        <p class="explica" style="margin-top:8px">f é quantas vezes o termo aparece no trecho e |d| é o tamanho do trecho em termos. Trecho longo tem K maior, então cada ocorrência vale um pouco menos; a frequência satura, e a 3ª ocorrência vale bem menos que a 1ª.</p>
+      </details>` : ''}
+    </div></li>`;
+  }
+
+  function etapaFrase(r) {
+    if (!r.frases.length) return '';
+    return `<li class="etapa"><div class="etapa-num">4</div><div class="etapa-corpo">
+      <h4>Filtro de frase exata <span class="fn">busca_aspas() · aula08_frase.R</span></h4>
+      <p class="resumo">A pergunta tem aspas. Dos ${r.comEscore.length} trechos com nota, ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'tem', 'têm')} ${plural(r.frases.length, 'a frase', 'todas as frases')} com as palavras coladas e nessa ordem. Os outros saem da lista; a ordem do BM25 fica.</p>
+      <div class="chips">${r.frases.map((f) => `<span class="chip frase">“${esc(f.join(' '))}”</span>`).join('')}</div>
+    </div></li>`;
+  }
+
+  function etapaProx(r, c) {
+    const n = r.frases.length ? 5 : 4;
+    if (!r.rkFiltro.length) return '';
+    if (r.k === 0) {
+      return `<li class="etapa est2"><div class="etapa-num">${n}</div><div class="etapa-corpo">
+        <h4>Estágio 2 · proximidade <span class="fn">rerank_prox()</span></h4>
+        <p class="resumo">Desligado nos ajustes (rerank_k = 0): a ordem final é a do BM25.</p></div></li>`;
+    }
+    const antes = r.rkFiltro.slice(0, r.k);
+    const depois = r.rkFinal.slice(0, r.k);
+    const mudou = depois.filter((id, i) => antes[i] !== id).length;
+    const linhas = depois.map((id, i) => {
+      const a = antes.indexOf(id);
+      const p = r.prox[id];
+      const mov = a > i ? `<span class="mov sobe">▲ era ${a + 1}º</span>` : a < i ? `<span class="mov desce">▼ era ${a + 1}º</span>` : '<span class="mov igual">= mesma posição</span>';
+      const pares = p.pares.length
+        ? p.pares.map((q) => `<span>${parTxt(q)} <span class="num">+${nf(q.valor)}</span></span>`).join('')
+        : '<span>nenhum par de termos em ordem e perto</span>';
+      return `<div class="rl-linha"><div class="rl-pos">${i + 1}º</div><div class="rl-info">
+          <div class="rl-doc ${DOC[id].porto}"><span class="ponto"></span>${curto(id)} ${mov}</div>
+          <div class="rl-pares">${pares}</div></div>
+        <div class="rl-score">${nf(p.s)}<small>proximidade</small></div></div>`;
+    }).join('');
+    const resumo = `Reli só os ${r.k} primeiros do BM25, procurando pares de termos da pergunta na mesma ordem e a até ${c.janela} ${plural(c.janela, 'posição', 'posições')} de distância. ` +
+      (mudou ? `<b>${mudou} ${plural(mudou, 'trecho mudou', 'trechos mudaram')} de lugar.</b>` : 'A ordem ficou a mesma.');
+    return `<li class="etapa est2"><div class="etapa-num">${n}</div><div class="etapa-corpo">
+      <h4>Estágio 2 · releitura por proximidade <span class="fn">rerank_prox(rk, qt, tokens, k = ${r.k}, janela = ${c.janela})</span></h4>
+      <p class="resumo">${resumo}</p>
+      <p class="antes">Antes: ${antes.map((id) => `<code>${curto(id)}</code>`).join(' → ')}</p>
+      <div class="releitura">${linhas}</div>
+      <details><summary>Como a proximidade é calculada</summary>
+        <div class="formula">prox(q, d) = Σ  1 / (menor distância de tᵢ até tⱼ)
+             pares i &lt; j de termos diferentes da pergunta,
+             com tⱼ depois de tᵢ e distância ≤ janela (${c.janela})</div>
+        <p class="explica" style="margin-top:8px">As distâncias contam posições depois de tirar as stopwords. Empate mantém a ordem do BM25, e os trechos depois do ${r.k}º não são relidos. No gabarito do grupo, a releitura do top-3 baixou o MAP de 0,907 para 0,847 (Aula 08): ela premia “porto de santos” colado mesmo quando o trecho não responde à pergunta.</p>
+      </details>
+    </div></li>`;
+  }
+
+  function porque(r, id, cores) {
+    const ag = agrega(r.parcelas[id]);
+    const termos = [...ag.entries()].sort((a, b) => b[1].parcela - a[1].parcela);
+    const fr = [];
+    if (!termos.length) { fr.push('Nenhum termo da pergunta aparece neste trecho.'); return fr; }
+    fr.push('Tem ' + lista(termos.map(([t, v]) => `${chip(t, cores.get(t))} ${v.f}×`)) + '.');
+    const [t0, v0] = termos[0];
+    const df = IX.df[t0];
+    const rar = df <= 3 ? `aparece em só ${df} dos ${IX.N} trechos` : df <= 12 ? `aparece em ${df} dos ${IX.N} trechos` : `é comum (está em ${df} dos ${IX.N} trechos), por isso vale pouco`;
+    fr.push(`O que mais pesou foi <b class="mono">${esc(t0)}</b> (+${nf(v0.parcela)} pts): ${rar}.`);
+    const faltam = r.noVocab.filter((t) => !ag.has(t));
+    if (faltam.length) fr.push(`Não tem ${lista(faltam.map((t) => `<b class="mono">${esc(t)}</b>`), 'nem')}.`);
+    const dl = IX.dl[id];
+    if (dl < 0.7 * IX.avgdl) fr.push(`É um trecho curto (${dl} termos; a média é ${nf(IX.avgdl, 1)}), então cada ocorrência conta mais.`);
+    else if (dl > 1.5 * IX.avgdl) fr.push(`É um trecho longo (${dl} termos; a média é ${nf(IX.avgdl, 1)}): o BM25 desconta um pouco por isso.`);
+    const p = r.prox[id];
+    if (p) {
+      const a = r.rkFiltro.indexOf(id) + 1, d = r.rkFinal.indexOf(id) + 1;
+      const melhor = p.pares.slice().sort((x, y) => x.dist - y.dist)[0];
+      if (d < a) fr.push(`Na releitura subiu do ${a}º para o ${d}º lugar: tem ${parTxt(melhor)}, na ordem da pergunta.`);
+      else if (d > a) fr.push(`Na releitura desceu do ${a}º para o ${d}º lugar: ${p.s > 0 ? 'outro candidato tinha mais termos em ordem e perto' : 'não tem dois termos da pergunta em ordem e perto'}.`);
+      else fr.push(p.s > 0 ? `Na releitura manteve o ${d}º lugar (proximidade ${nf(p.s)}: ${parTxt(melhor)}).` : `Na releitura manteve o ${d}º lugar.`);
+    }
+    return fr;
+  }
+
+  function cartao(rid, id, pos) {
+    const st = respostas.get(rid);
+    const r = st.r, cores = st.cores;
+    const d = DOC[id];
+    const a = r.rkFiltro.indexOf(id) + 1;
+    const mov = r.prox[id] && a !== pos ? (a > pos ? `<span class="mov sobe">▲ era ${a}º no BM25</span>` : `<span class="mov desce">▼ era ${a}º no BM25</span>`) : '';
+    const gab = st.nec ? selo((DADOS.qrels[st.nec.q] || {})[id]) : '';
+    const destaque = pos === 1;
+    return `<article class="cartao${destaque ? ' destaque' : ''}">
+      <div class="cartao-topo"><span class="cartao-pos">${pos}º</span>${portoChip(d.porto)}<span class="doc-id">${esc(id)}</span>${mov}${gab}
+        <span class="pts">${nf(r.escores[id])} <small>pts BM25</small></span></div>
+      <p class="trecho${destaque ? '' : ' curto'}">${realcar(d.original, cores)}</p>
+      <ul class="porque">${porque(r, id, cores).map((f) => `<li>${f}</li>`).join('')}</ul>
+      <div class="cartao-acoes">
+        ${destaque ? '' : '<button type="button" class="link" data-acao="ler">Ler o trecho inteiro</button>'}
+        <button type="button" class="link" data-acao="visao">Como o motor vê este trecho</button>
+      </div>
+      <div class="visao" hidden>${visaoMotor(id, cores)}</div>
+    </article>`;
+  }
+
+  function blocoGabarito(st) {
+    const n = st.nec; if (!n) return '';
+    const g = DADOS.qrels[n.q] || {};
+    const julg = Object.keys(g).length;
+    const ap0 = M.ap(st.r.rk1, g, st.cfg.limiar), ap1 = M.ap(st.r.rkCompleto, g, st.cfg.limiar);
+    const apTxt = n.R ? `<div class="ap-linha"><span>AP só com o BM25 <b>${nf(ap0, 3)}</b></span><span>AP com a releitura <b>${nf(ap1, 3)}</b></span><span>trechos de grau 2: <b>${n.R}</b></span></div>`
+      : '<p>Nenhum trecho desta consulta recebeu grau 2, então ela fica fora do MAP.</p>';
+    return `<section class="gabarito"><h4>Esta pergunta é a ${n.q} do gabarito do grupo <span class="doc-id">${julg} ${plural(julg, 'trecho julgado', 'trechos julgados')}</span></h4>
+      <p><b>Necessidade:</b> ${esc(n.necessidade)}</p>${apTxt}</section>`;
+  }
+
+  function respostaHTML(rid) {
+    const st = respostas.get(rid);
+    const r = st.r, c = st.cfg;
+    const cores = st.cores;
+    const final = r.rkFinal;
+    let lead;
+    if (!final.length) {
+      lead = r.qt.length
+        ? `<p class="lead">Não encontrei nenhum trecho ${r.frases.length && r.comEscore.length ? 'com a frase entre aspas' : 'com essas palavras'}. O motor só acha o que está escrito igual nos trechos; tente outra palavra ou a forma no singular.</p>`
+        : '<p class="lead">Sobrou nada para procurar: todas as palavras eram stopwords.</p>';
+    } else {
+      const top5 = final.slice(0, 5);
+      const cont = {}; top5.forEach((id) => { cont[DOC[id].porto] = (cont[DOC[id].porto] || 0) + 1; });
+      const ent = Object.entries(cont).sort((a, b) => b[1] - a[1]);
+      const base = r.frases.length ? 'com a frase entre aspas' : 'com pelo menos uma palavra da pergunta';
+      const p1 = PORTO[DOC[final[0]].porto];
+      let txt = `Encontrei <b>${final.length}</b> ${plural(final.length, 'trecho', 'trechos')} ${base}. `;
+      if (final.length === 1) txt += `Ele é do <b>${p1}</b>.`;
+      else {
+        txt += `O mais bem colocado é do <b>${p1}</b>. `;
+        const quais = top5.length === final.length ? (top5.length === 2 ? 'Os dois' : `Os ${top5.length}`) : `Entre os ${top5.length} primeiros,`;
+        txt += ent.length === 1 ? `${top5.length === final.length ? quais + ' são' : quais + ' todos são'} de ${PORTO_CURTO[ent[0][0]]}.`
+          : `${top5.length === final.length ? 'Por porto' : `Entre os ${top5.length} primeiros`}: ${lista(ent.map(([p, n]) => `${n} de ${PORTO_CURTO[p]}`))}.`;
+      }
+      lead = `<p class="lead">${txt}</p>`;
+    }
+    const nCart = Math.min(st.mostrar, final.length);
+    const cards = final.slice(0, nCart).map((id, i) => cartao(rid, id, i + 1)).join('');
+    const mais = final.length > nCart ? `<button type="button" class="btn" data-acao="mais" style="justify-self:start">Mostrar mais ${Math.min(5, final.length - nCart)} ${plural(Math.min(5, final.length - nCart), 'trecho', 'trechos')}</button>` : '';
+    const lidos = r.k;
+    const etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaFrase(r) + etapaProx(r, c);
+    const nEtapas = (etapas.match(/<li class="etapa/g) || []).length;
+    return `<details class="raciocinio"${st.abrir ? ' open' : ''}>
+        <summary><span class="seta"></span><b>Raciocínio do motor</b> ${nEtapas} etapas <span class="meta">${IX.N} trechos pontuados · ${lidos} ${plural(lidos, 'relido', 'relidos')}</span></summary>
+        <ol class="etapas">${etapas}</ol>
+      </details>
+      <div class="resposta">${lead}${blocoGabarito(st)}${cards}${mais}
+        <p class="rodape">Resposta montada só com as contas do motor do grupo: BM25 (k1 = ${nf(c.k1, 1)}, b = ${nf(c.b, 2)}) e releitura do top-${c.rerank_k} por proximidade (janela ${c.janela}). Nenhuma frase foi escrita por um modelo de linguagem: os trechos são da Wikipédia (CC BY-SA) e as explicações saem dos números acima.</p>
+      </div>`;
+  }
+
+  // ---------- conversa ----------
+  const conversa = $('#conversa');
+  let ultima = null;
+
+  function msgUser(txt) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-user';
+    el.innerHTML = `<div class="balao">${esc(txt)}</div>`;
+    conversa.appendChild(el);
+    return el;
+  }
+  function msgIA(html) {
+    const el = document.createElement('div');
+    el.className = 'msg msg-ia';
+    el.innerHTML = `<div class="avatar"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#farol"></use></svg></div>
+      <div class="ia-corpo"><div class="ia-nome">Farol <small></small></div>${html}</div>`;
+    conversa.appendChild(el);
+    return el;
+  }
+
+  function sugestoesHTML() {
+    const ex = [
+      ['Como é o terminal de águas profundas de Yangshan?', ''],
+      ['incêndios acidentes porto santos terminais', 'q14'],
+      ['Qual é o maior porto do mundo em contêineres?', ''],
+      ['terminal "águas profundas" xangai', 'aspas'],
+      ['Como as mercadorias chegam ao porto de Roterdã por trem?', ''],
+    ];
+    return `<div class="sugestoes">${ex.map(([q, tag]) => `<button type="button" class="sugestao" data-acao="perguntar" data-q="${esc(q)}">${esc(q)}${tag ? `<small>${tag}</small>` : ''}</button>`).join('')}</div>`;
+  }
+
+  function boasVindas() {
+    msgIA(`<p class="lead">Olá! Eu sou o <b>Farol</b>, o motor de busca do grupo Enem. Procuro respostas em ${IX.N} trechos da Wikipédia sobre os portos de <b>Santos</b>, <b>Xangai</b> e <b>Roterdã</b>.</p>
+      <p>Não invento respostas: mostro os trechos que encontrei e abro o meu raciocínio, etapa por etapa, com as contas que decidiram a ordem. Experimente:</p>
+      ${sugestoesHTML()}`);
+  }
+
+  function processar(txt) {
+    const c = Object.assign({}, cfg);
+    const t0 = performance.now();
+    const r = M.buscar(txt, IX, c);
+    const ms = performance.now() - t0;
+    const nec = NEC.find((n) => n.chave === chave(r.qt)) || null;
+    const rid = 'r' + (++contador);
+    respostas.set(rid, { r, cfg: c, cores: coresDos(r.noVocab), nec, ms, mostrar: 5, abrir: true });
+    return rid;
+  }
+
+  function perguntar(txt, imediato) {
+    txt = String(txt || '').trim();
+    if (!txt) return;
+    ultima = txt;
+    $('#refazer').disabled = false;
+    const u = msgUser(txt);
+    const rid = processar(txt);
+    const st = respostas.get(rid);
+    const passos = [
+      'Preparando a pergunta…',
+      'Consultando o índice invertido…',
+      `Calculando o BM25 nos ${IX.N} trechos…`,
+    ];
+    if (st.r.frases.length) passos.push('Filtrando pela frase exata…');
+    if (st.cfg.rerank_k > 0) passos.push(`Relendo os ${st.cfg.rerank_k} primeiros…`);
+    const ia = msgIA(`<ul class="pensando">${passos.map((p) => `<li>${p}</li>`).join('')}</ul>`);
+    ia.dataset.rid = rid;
+    const corpo = ia.querySelector('.ia-corpo');
+    const nome = ia.querySelector('.ia-nome small');
+    const terminar = () => {
+      nome.textContent = `contas em ${st.ms < 1 ? 'menos de 1' : nf(st.ms, 0)} ms`;
+      corpo.querySelector('.pensando').remove();
+      corpo.insertAdjacentHTML('beforeend', respostaHTML(rid));
+      if (!imediato) ia.scrollIntoView({ behavior: reduzMovimento ? 'auto' : 'smooth', block: 'start' });
+    };
+    if (imediato || reduzMovimento) { terminar(); if (!imediato) u.scrollIntoView({ block: 'start' }); return; }
+    u.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const itens = ia.querySelectorAll('.pensando li');
+    itens.forEach((li, i) => { if (i > 0) li.hidden = true; });
+    let i = 0;
+    const passo = () => {
+      itens[i].classList.add('feito');
+      i++;
+      if (i < itens.length) { itens[i].hidden = false; setTimeout(passo, 420); }
+      else setTimeout(terminar, 260);
+    };
+    setTimeout(passo, 420);
+  }
+
+  // cliques dentro da conversa
+  conversa.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-acao]');
+    if (!b) return;
+    const acao = b.dataset.acao;
+    if (acao === 'perguntar') { perguntar(b.dataset.q); return; }
+    const msg = b.closest('.msg-ia');
+    const rid = msg && msg.dataset.rid;
+    if (acao === 'trocar' && rid) {
+      const st = respostas.get(rid);
+      const novo = st.r.prep.brutos.map((t) => (t === b.dataset.de ? b.dataset.para : t)).join(' ');
+      perguntar(novo);
+    } else if (acao === 'mais' && rid) {
+      const st = respostas.get(rid);
+      const de = st.mostrar;
+      st.mostrar += 5;
+      const novos = st.r.rkFinal.slice(de, st.mostrar).map((id, i) => cartao(rid, id, de + i + 1)).join('');
+      b.insertAdjacentHTML('beforebegin', novos);
+      const resta = st.r.rkFinal.length - st.mostrar;
+      if (resta > 0) b.textContent = `Mostrar mais ${Math.min(5, resta)} ${plural(Math.min(5, resta), 'trecho', 'trechos')}`; else b.remove();
+    } else if (acao === 'ler') {
+      const p = b.closest('.cartao').querySelector('.trecho');
+      p.classList.toggle('curto');
+      b.textContent = p.classList.contains('curto') ? 'Ler o trecho inteiro' : 'Recolher o trecho';
+    } else if (acao === 'visao') {
+      const v = b.closest('.cartao').querySelector('.visao');
+      v.hidden = !v.hidden;
+      b.textContent = v.hidden ? 'Como o motor vê este trecho' : 'Esconder a visão do motor';
+    }
+  });
+
+  // ---------- entrada ----------
+  const form = $('#form'), ta = $('#pergunta'), enviar = $('#enviar');
+  const ajustaAltura = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; enviar.disabled = !ta.value.trim(); };
+  ta.addEventListener('input', ajustaAltura);
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); }
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = ta.value.trim();
+    if (!t) return;
+    ta.value = ''; ajustaAltura();
+    perguntar(t);
+  });
+
+  $('#novo').addEventListener('click', () => {
+    conversa.innerHTML = ''; respostas.clear(); ultima = null; $('#refazer').disabled = true;
+    boasVindas(); ta.focus();
+  });
+
+  // ---------- painel ----------
+  const painel = $('#painel');
+  $('#abrir-painel').addEventListener('click', () => { painel.classList.add('aberto'); document.body.style.overflow = 'hidden'; $('#fechar-painel').focus(); });
+  const fecharPainel = () => { painel.classList.remove('aberto'); document.body.style.overflow = ''; };
+  $('#fechar-painel').addEventListener('click', fecharPainel);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharPainel(); });
+
+  $('#lista-q').innerHTML = NEC.map((n) =>
+    `<button type="button" data-q="${esc(n.consulta)}" title="${esc(n.necessidade)}"><span class="qid">${n.q}</span><span class="${n.R ? '' : 'sem-r'}">${esc(n.consulta)}</span></button>`).join('');
+  $('#lista-q').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-q]');
+    if (b) { fecharPainel(); perguntar(b.dataset.q); }
+  });
+
+  const aj = { k1: $('#aj-k1'), b: $('#aj-b'), rerank_k: $('#aj-k'), janela: $('#aj-j') };
+  function lerAjustes() {
+    cfg.k1 = parseFloat(aj.k1.value); cfg.b = parseFloat(aj.b.value);
+    cfg.rerank_k = parseInt(aj.rerank_k.value, 10); cfg.janela = parseInt(aj.janela.value, 10);
+    $('#out-k1').textContent = nf(cfg.k1, 1);
+    $('#out-b').textContent = nf(cfg.b, 2);
+    let mudou = false;
+    for (const k of Object.keys(aj)) {
+      const dif = Math.abs(cfg[k] - PADRAO[k]) > 1e-9;
+      aj[k].closest('.ajuste').classList.toggle('ajuste-mudou', dif);
+      mudou = mudou || dif;
+    }
+    $('#restaurar').disabled = !mudou;
+    const [m0, m1] = mapCom(cfg);
+    $('#map0').textContent = nf(m0, 3);
+    $('#map1').textContent = cfg.rerank_k ? nf(m1, 3) : '—';
+  }
+  Object.values(aj).forEach((el) => el.addEventListener('input', lerAjustes));
+  $('#restaurar').addEventListener('click', () => {
+    aj.k1.value = PADRAO.k1; aj.b.value = PADRAO.b; aj.rerank_k.value = PADRAO.rerank_k; aj.janela.value = PADRAO.janela;
+    lerAjustes();
+  });
+  $('#refazer').addEventListener('click', () => { if (ultima) { fecharPainel(); perguntar(ultima); } });
+
+  $('#f-n').textContent = IX.N;
+  $('#f-v').textContent = IX.vocab.length.toLocaleString('pt-BR');
+  $('#f-m').textContent = nf(IX.avgdl, 1);
+
+  // ---------- dica flutuante ----------
+  const dica = $('#dica');
+  let alvo = null;
+  function mostraDica(el, x, y) {
+    dica.innerHTML = el.dataset.dica; dica.hidden = false;
+    const w = dica.offsetWidth, h = dica.offsetHeight;
+    let left = x + 12, top = y - h - 10;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, x - w - 12);
+    if (top < 8) top = y + 16;
+    dica.style.left = left + 'px'; dica.style.top = top + 'px';
+  }
+  document.addEventListener('pointermove', (e) => {
+    const el = e.target.closest && e.target.closest('[data-dica]');
+    if (el) { alvo = el; mostraDica(el, e.clientX, e.clientY); }
+    else if (alvo) { alvo = null; dica.hidden = true; }
+  });
+  document.addEventListener('scroll', () => { dica.hidden = true; alvo = null; }, { passive: true });
+
+  // ---------- estado inicial ----------
+  lerAjustes();
+  boasVindas();
+  perguntar('Como é o terminal de águas profundas de Yangshan?', true);
+  window.scrollTo(0, 0);
+})();
+</script>
+</body>
+</html>
