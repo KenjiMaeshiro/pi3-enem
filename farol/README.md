@@ -39,7 +39,7 @@ Há dois jeitos. A diferença é só a resposta escrita.
    - **BM25** — k1 = 1,2 e b = 0,75.
    - **LSA** — SVD da matriz TF-IDF, com 50 dimensões (`lsa_k`).
    - **Híbrido** — fusão RRF do BM25 com o LSA (c = 60).
-3. **Frase exata** — o que estiver entre aspas tem que aparecer colado e na ordem (`aula08_frase.R`).
+3. **Frase exata** — o que estiver entre aspas tem que aparecer colado e na ordem (`aula08_frase.R`). Ponha entre aspas só a expressão, não a pergunta inteira: `terminal "águas profundas" xangai`. Se nenhum trecho tiver a frase, o Farol avisa e busca sem as aspas.
 4. **Estágio 2 · proximidade** (opcional) — relê os `rerank_k` primeiros e sobe quem tem os termos em ordem e perto.
 5. **Resposta** — o Claude lê os 8 primeiros trechos (mais até 2 de cada porto, para perguntas que comparam) e responde citando cada um. Ele não usa nada de fora dos trechos; se eles não bastam, ele diz o que falta.
 

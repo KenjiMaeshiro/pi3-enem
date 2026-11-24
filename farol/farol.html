@@ -1317,6 +1317,9 @@ ${esc(idfs)}</div>
     const est1 = r.modelo === 'bm25' ? `BM25 (k1 = ${nf(c.k1, 1)}, b = ${nf(c.b, 2)})`
       : r.modelo === 'lsa' ? `LSA (${c.lsa_k} dimensões)` : `híbrido RRF (BM25 + LSA ${c.lsa_k}, c = ${c.rrf_c})`;
     const est2 = c.rerank_k ? ` e releitura do top-${c.rerank_k} por proximidade (janela ${c.janela})` : '';
+    const avisoFrase = st.semFrase
+      ? `<p class="aviso">Nenhum trecho tem ${lista(st.semFrase.map((f) => `“${esc(f.join(' '))}”`))} com as palavras coladas e nessa ordem, então busquei sem as aspas. Para a busca exata, ponha entre aspas só a expressão, como em <code>terminal "águas profundas" xangai</code>.</p>`
+      : '';
     let topo;
     if (!final.length) {
       topo = r.qt.length
@@ -1336,7 +1339,7 @@ ${esc(idfs)}</div>
     let etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaModelo(r, c) + etapaFrase(r) + etapaProx(r, c);
     let num = 0;
     etapas = etapas.replace(/<div class="etapa-num">\d+<\/div>/g, () => `<div class="etapa-num">${++num}</div>`);
-    return `${topo}
+    return `${avisoFrase}${topo}
       <div class="resposta">${blocoGabarito(st)}${fontes}${cards}${mais}</div>
       <details class="raciocinio"${st.abrir ? ' open' : ''}>
         <summary><span class="seta"></span><b>Raciocínio do motor</b> ${num} etapas <span class="meta">${IX.N} trechos ordenados · ${r.k} ${plural(r.k, 'relido', 'relidos')}</span></summary>
@@ -1477,11 +1480,17 @@ ${trechos}`;
       portos: $('#aj-portos').checked,
     });
     const t0 = performance.now();
-    const r = M.buscar(txt, IX, c);
+    let r = M.buscar(txt, IX, c);
+    // Nenhum trecho tem a frase entre aspas: avisa e busca de novo sem as aspas
+    let semFrase = null;
+    if (r.frases.length && !r.rkFiltro.length && r.comEscore.length) {
+      semFrase = r.frases;
+      r = M.buscar(String(txt).replace(/["“”«»]/g, ' '), IX, c);
+    }
     const ms = performance.now() - t0;
     const nec = NEC.find((n) => n.chave === chave(r.qt)) || null;
     const rid = 'r' + (++contador);
-    respostas.set(rid, { r, cfg: c, ctx: contexto(r, c), cores: coresDos(r.noVocab), nec, ms, mostrarResto: 0, abrir: false, ctl: null });
+    respostas.set(rid, { r, cfg: c, ctx: contexto(r, c), cores: coresDos(r.noVocab), nec, ms, semFrase, mostrarResto: 0, abrir: false, ctl: null });
     return rid;
   }
 
