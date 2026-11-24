@@ -479,6 +479,9 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
   padding: 0 5px; border-radius: 5px; margin: 0 1px; vertical-align: 1px; cursor: pointer;
 }
 .cita:hover { background: var(--accent); color: var(--accent-ink); }
+.entendi { margin: 0; font-size: 13.5px; color: var(--ink-2); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; max-width: 72ch; }
+.entendi .tag-ui { font: 500 10.5px var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 5px; }
+.entendi s { color: var(--muted); }
 .aviso { margin: 0; font-size: 13.5px; color: var(--warn); background: var(--warn-bg); padding: 8px 12px; border-radius: 8px; max-width: 72ch; }
 .fontes-tit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 4px; }
 .fontes-tit h3 { font-size: 15px; font-weight: 700; }
@@ -556,6 +559,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
             <label for="aj-j">janela <small>distância máxima entre termos</small></label>
             <select id="aj-j"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select>
           </div>
+          <label class="marcar" for="aj-comp"><input type="checkbox" id="aj-comp" checked> Entender erros de digitação <small>corrige palavras que não existem no corpus e, nas aspas, aceita plural e até 2 palavras no meio. Desligado, o motor fica exatamente igual ao do R.</small></label>
           <div class="ajustes-acoes">
             <button class="btn" type="button" id="restaurar" disabled>Restaurar config.R</button>
             <button class="btn" type="button" id="refazer" disabled>Refazer a última pergunta</button>
@@ -674,6 +678,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     rrf_c: 60,
     rerank_k: 3,
     janela: 3,
+    compreender: true,   // so do Farol: corrige erros de digitacao e flexibiliza a frase entre aspas
   };
 
   // limpar(x, "translit"): tira acentos, minusculas, o que nao e letra/digito vira espaco
@@ -866,12 +871,104 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     return (String(consulta).match(/"[^"]+"/g) || []).map((m) => m.replace(/"/g, ''));
   }
 
+  // ---------- Compreensao da pergunta (camada do Farol, fora do motor do R) ----------
+  // Radical simples do portugues, so para juntar plural e singular: portos/porto, terminais/terminal
+  function radical(t) {
+    if (t.length <= 3) return t;
+    if (/(oes|aes)$/.test(t)) return t.slice(0, -3) + 'ao';
+    if (/ais$/.test(t)) return t.slice(0, -3) + 'al';
+    if (/eis$/.test(t)) return t.slice(0, -3) + 'el';
+    if (/ois$/.test(t)) return t.slice(0, -3) + 'ol';
+    if (/ns$/.test(t)) return t.slice(0, -2) + 'm';
+    if (/(res|zes|ses)$/.test(t)) return t.slice(0, -2);
+    if (/s$/.test(t)) return t.slice(0, -1);
+    return t;
+  }
+  // Distancia de edicao (com troca de letras vizinhas), parando cedo acima de max
+  function distancia(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      let menor = Infinity;
+      for (let j = 1; j <= b.length; j++) {
+        const c = a[i - 1] === b[j - 1] ? 0 : 1;
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        menor = Math.min(menor, d[i][j]);
+      }
+      if (menor > max) return max + 1;
+    }
+    return d[a.length][b.length];
+  }
+  function porRadical(ix) {
+    if (!ix.porRadical) {
+      ix.porRadical = {};
+      for (const w of ix.vocab) (ix.porRadical[radical(w)] = ix.porRadical[radical(w)] || []).push(w);
+    }
+    return ix.porRadical;
+  }
+  // Palavra que nao existe no corpus: a mais parecida (1 erro ate 5 letras, 2 erros acima); empate: a mais frequente
+  function corrigir(t, ix) {
+    if (t in ix.df || t.length < 4 || /^\d+$/.test(t)) return t;
+    const pr = porRadical(ix)[radical(t)];
+    if (pr) return pr.slice().sort((a, b) => ix.df[b] - ix.df[a])[0];
+    const max = t.length >= 6 ? 2 : 1;
+    let melhor = null, dm = max + 1;
+    const prefixo = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };
+    for (const w of ix.vocab) {
+      if (w.length < 3) continue;
+      const dd = distancia(t, w, max);
+      // 2 erros so quando o comeco bate quase todo (evita importacoes -> importantes)
+      if (dd === 2 && prefixo(t, w) < t.length - 3) continue;
+      if (dd < dm || (dd === dm && melhor && ix.df[w] > ix.df[melhor])) { dm = dd; melhor = w; }
+    }
+    return dm <= max ? melhor : t;
+  }
+  function variantes(t, ix) {
+    return (porRadical(ix)[radical(t)] || []).filter((w) => w !== t);
+  }
+  // Os termos da pergunta: corrigidos e com as variacoes de plural/singular
+  function compreender(tokens, ix) {
+    const base = [], expandido = [], mudancas = [];
+    for (const t of tokens) {
+      const c = corrigir(t, ix);
+      const v = c in ix.df ? variantes(c, ix) : [];
+      base.push(c);
+      expandido.push(c);
+      for (const w of v) if (!tokens.includes(w) && !expandido.includes(w)) expandido.push(w);
+      if (c !== t || v.length) mudancas.push({ de: t, para: c !== t ? c : null, variantes: v.filter((w) => !tokens.includes(w)) });
+    }
+    return { base, expandido, mudancas };
+  }
+  // Frase flexivel: os termos (ou variacoes) na ordem, com ate `folga` palavras entre um e outro
+  function fraseFlex(conjuntos, dt, folga) {
+    let n = 0;
+    dt.forEach((w, p) => {
+      if (!conjuntos[0].has(w)) return;
+      let pos = p;
+      for (let i = 1; i < conjuntos.length; i++) {
+        let achou = -1;
+        for (let q = pos + 1; q <= Math.min(dt.length - 1, pos + 1 + folga); q++) if (conjuntos[i].has(dt[q])) { achou = q; break; }
+        if (achou < 0) return;
+        pos = achou;
+      }
+      n++;
+    });
+    return n;
+  }
+
   // A busca inteira, devolvendo cada etapa para a interface explicar
   function buscar(consulta, ix, cfg) {
     const texto = String(consulta).replace(/[“”«»]/g, '"');
     const semAspas = texto.replace(/"/g, ' ');
     const prep = prepararExplicado(semAspas, cfg);
-    const qt = prep.tokens;
+    // Com cfg.compreender, a pergunta passa pela correcao e pelas variacoes antes do motor
+    const comp = cfg.compreender ? compreender(prep.tokens, ix) : null;
+    // Pontua so a pergunta corrigida: somar plural/singular em toda busca baixou o MAP do gabarito
+    // (BM25 0,907 -> 0,847; LSA 0,944 -> 0,808). As variacoes ficam so na frase entre aspas.
+    const qt = comp ? comp.base : prep.tokens;
+    const qtProx = qt;
     const termosUnicos = [...new Set(qt)];
     const noVocab = termosUnicos.filter((t) => t in ix.df);
     const foraVocab = termosUnicos.filter((t) => !(t in ix.df));
@@ -897,21 +994,31 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
       : [];
 
     // Filtro de frase exata (aula08_frase.R), se houver aspas
-    const frases = aspas(texto).map((f) => preparar(f, cfg)).filter((f) => f.length);
-    let rkFiltro = comEscore;
-    if (frases.length) rkFiltro = comEscore.filter((id) => frases.every((f) => frase(f, ix.tokens[id]) > 0));
+    let frases = aspas(texto).map((f) => preparar(f, cfg)).filter((f) => f.length);
+    if (comp) frases = frases.map((f) => f.map((t) => corrigir(t, ix)));
+    let rkFiltro = comEscore, fraseModo = null;
+    if (frases.length) {
+      rkFiltro = comEscore.filter((id) => frases.every((f) => frase(f, ix.tokens[id]) > 0));
+      fraseModo = 'exata';
+      // nada colado: aceita plural/singular e ate 2 palavras no meio (ex.: "incendio [historia] porto")
+      if (!rkFiltro.length && comp) {
+        const conj = frases.map((f) => f.map((t) => new Set([t, ...variantes(t, ix)])));
+        rkFiltro = comEscore.filter((id) => conj.every((c) => fraseFlex(c, ix.tokens[id], 2) > 0));
+        fraseModo = 'flexivel';
+      }
+    }
 
     // Estagio 2: proximidade nos k primeiros (rerank_prox)
     const k = Math.min(cfg.rerank_k, rkFiltro.length);
     const prox = {};
-    for (const id of rkFiltro.slice(0, k)) prox[id] = proximidade(qt, ix.tokens[id], cfg.janela, true);
+    for (const id of rkFiltro.slice(0, k)) prox[id] = proximidade(qtProx, ix.tokens[id], cfg.janela, true);
     const sc = {}; for (const id in prox) sc[id] = prox[id].s;
     const rkFinal = k > 0 ? reordenar(rkFiltro, k, sc) : rkFiltro.slice();
     // o ranking inteiro, como o R devolve (os de fora no fim, na ordem do estagio 1): e o que o AP usa
     const dentro = new Set(rkFinal);
     const rkCompleto = frases.length ? rkFinal : rkFinal.concat(rk1.filter((id) => !dentro.has(id)));
 
-    return { consulta: texto, prep, qt, termosUnicos, noVocab, foraVocab, escores: s, parcelas, modelo, rkBM25, rk1, sc1, lsaS, comEscore, and, frases, rkFiltro, k, prox, rkFinal, rkCompleto };
+    return { consulta: texto, prep, qt, comp, termosUnicos, noVocab, foraVocab, escores: s, parcelas, modelo, rkBM25, rk1, sc1, lsaS, comEscore, and, frases, fraseModo, rkFiltro, k, prox, rkFinal, rkCompleto };
   }
 
   // Metricas da Aula 5,5 (relevancia + AP), para as consultas do gabarito
@@ -923,7 +1030,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     return soma / R;
   }
 
-  const Motor = { CFG, limpar, preparar, prepararExplicado, montar, bm25, ordenar, lsa, rankingLSA, rrf, proximidade, reordenar, frase, aspas, buscar, ap };
+  const Motor = { CFG, limpar, preparar, prepararExplicado, montar, bm25, ordenar, lsa, rankingLSA, rrf, proximidade, reordenar, frase, aspas, buscar, ap, compreender, corrigir, variantes };
   if (typeof module !== 'undefined' && module.exports) module.exports = Motor; else raiz.Motor = Motor;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -1171,7 +1278,7 @@ ${esc(idfs)}</div>
     if (!r.frases.length) return '';
     return `<li class="etapa"><div class="etapa-num">4</div><div class="etapa-corpo">
       <h4>Filtro de frase exata <span class="fn">busca_aspas() · aula08_frase.R</span></h4>
-      <p class="resumo">A pergunta tem aspas. Dos ${r.comEscore.length} trechos com nota, ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'tem', 'têm')} ${plural(r.frases.length, 'a frase', 'todas as frases')} com as palavras coladas e nessa ordem. Os outros saem da lista; a ordem do estágio 1 fica.</p>
+      <p class="resumo">A pergunta tem aspas. Dos ${r.comEscore.length} trechos com nota, ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'tem', 'têm')} ${plural(r.frases.length, 'a frase', 'todas as frases')} ${r.fraseModo === 'flexivel' ? 'na mesma ordem, aceitando plural e até 2 palavras no meio (nenhum tinha as palavras coladas)' : 'com as palavras coladas e nessa ordem'}. Os outros saem da lista; a ordem do estágio 1 fica.</p>
       <div class="chips">${r.frases.map((f) => `<span class="chip frase">“${esc(f.join(' '))}”</span>`).join('')}</div>
     </div></li>`;
   }
@@ -1318,8 +1425,14 @@ ${esc(idfs)}</div>
       : r.modelo === 'lsa' ? `LSA (${c.lsa_k} dimensões)` : `híbrido RRF (BM25 + LSA ${c.lsa_k}, c = ${c.rrf_c})`;
     const est2 = c.rerank_k ? ` e releitura do top-${c.rerank_k} por proximidade (janela ${c.janela})` : '';
     const avisoFrase = st.semFrase
-      ? `<p class="aviso">Nenhum trecho tem ${lista(st.semFrase.map((f) => `“${esc(f.join(' '))}”`))} com as palavras coladas e nessa ordem, então busquei sem as aspas. Para a busca exata, ponha entre aspas só a expressão, como em <code>terminal "águas profundas" xangai</code>.</p>`
+      ? `<p class="aviso">Nenhum trecho tem ${lista(st.semFrase.map((f) => `“${esc(f.join(' '))}”`))}${c.compreender ? ', nem com plural ou até 2 palavras no meio,' : ' com as palavras coladas e nessa ordem,'} então busquei sem as aspas. Para a busca exata, ponha entre aspas só a expressão, como em <code>terminal "águas profundas" xangai</code>.</p>`
       : '';
+    // o que a camada de compreensao mudou na pergunta
+    const corr = r.comp ? r.comp.mudancas.filter((x) => x.para) : [];
+    const notas = [];
+    if (corr.length) notas.push(`Corrigi ${lista(corr.map((x) => `<s>${esc(x.de)}</s> → <b>${esc(x.para)}</b>`))}${corr.length === 1 ? ', que não aparece no corpus' : ', que não aparecem no corpus'}.`);
+    if (r.fraseModo === 'flexivel' && r.rkFiltro.length) notas.push(`Não achei ${lista(r.frases.map((f) => `“${esc(f.join(' '))}”`))} com as palavras coladas, então aceitei plural e até 2 palavras no meio: ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'trecho tem', 'trechos têm')}.`);
+    const entendi = notas.length ? `<p class="entendi"><span class="tag-ui">entendi assim</span> ${notas.join(' ')}</p>` : '';
     let topo;
     if (!final.length) {
       topo = r.qt.length
@@ -1339,7 +1452,7 @@ ${esc(idfs)}</div>
     let etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaModelo(r, c) + etapaFrase(r) + etapaProx(r, c);
     let num = 0;
     etapas = etapas.replace(/<div class="etapa-num">\d+<\/div>/g, () => `<div class="etapa-num">${++num}</div>`);
-    return `${avisoFrase}${topo}
+    return `${avisoFrase}${entendi}${topo}
       <div class="resposta">${blocoGabarito(st)}${fontes}${cards}${mais}</div>
       <details class="raciocinio"${st.abrir ? ' open' : ''}>
         <summary><span class="seta"></span><b>Raciocínio do motor</b> ${num} etapas <span class="meta">${IX.N} trechos ordenados · ${r.k} ${plural(r.k, 'relido', 'relidos')}</span></summary>
@@ -1404,7 +1517,9 @@ ${trechos}`;
     if (!sample || claudeNegado) {
       alvo.innerHTML = !window.claude
         ? '<p class="aviso">Este arquivo está aberto fora do claude.ai, então a resposta escrita não aparece. A busca, os trechos e as contas funcionam normalmente; para a resposta, abra o Farol pelo link do claude.ai.</p>'
-        : `<p class="aviso">A resposta escrita precisa do Claude, que não está disponível ${claudeNegado ? 'porque o acesso foi recusado nesta visualização' : 'nesta visualização'}. Os trechos que o motor encontrou estão logo abaixo.</p>`;
+        : claudeNegado
+          ? '<p class="aviso">O acesso ao Claude foi recusado nesta página, então não há resposta escrita. Recarregue a página e, na primeira pergunta, clique em “Permitir o uso do Claude”. Os trechos que o motor encontrou estão logo abaixo.</p>'
+          : '<p class="aviso">O Claude não está disponível nesta janela, então não há resposta escrita. Isso acontece quando o Farol é aberto fora da página do claude.ai, por exemplo pela opção de abrir em nova guia. Abra pelo link <b>claude.ai/artifact/…</b> no navegador, logado na sua conta. Os trechos que o motor encontrou estão logo abaixo.</p>';
       return;
     }
     const ctl = new AbortController();
@@ -1594,9 +1709,10 @@ ${trechos}`;
     cfg.rerank_k = parseInt(aj.rerank_k.value, 10); cfg.janela = parseInt(aj.janela.value, 10);
     cfg.lsa_k = parseInt(aj.lsa_k.value, 10);
     cfg.modelo = modeloEscolhido();
+    cfg.compreender = $('#aj-comp').checked;
     $('#out-k1').textContent = nf(cfg.k1, 1);
     $('#out-b').textContent = nf(cfg.b, 2);
-    let mudou = cfg.modelo !== PADRAO.modelo;
+    let mudou = cfg.modelo !== PADRAO.modelo || cfg.compreender !== PADRAO.compreender;
     for (const k of Object.keys(aj)) {
       const dif = Math.abs(cfg[k] - PADRAO[k]) > 1e-9;
       aj[k].closest('.ajuste').classList.toggle('ajuste-mudou', dif);
@@ -1611,9 +1727,11 @@ ${trechos}`;
   }
   Object.values(aj).forEach((el) => el.addEventListener('input', lerAjustes));
   document.querySelectorAll('input[name="modelo"]').forEach((el) => el.addEventListener('change', lerAjustes));
+  $('#aj-comp').addEventListener('change', lerAjustes);
   $('#restaurar').addEventListener('click', () => {
     aj.k1.value = PADRAO.k1; aj.b.value = PADRAO.b; aj.rerank_k.value = PADRAO.rerank_k; aj.janela.value = PADRAO.janela;
     aj.lsa_k.value = PADRAO.lsa_k;
+    $('#aj-comp').checked = PADRAO.compreender;
     const m = document.getElementById('mod-' + PADRAO.modelo); if (m) m.checked = true;
     lerAjustes();
   });

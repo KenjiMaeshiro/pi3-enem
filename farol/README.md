@@ -35,11 +35,12 @@ Há dois jeitos. A diferença é só a resposta escrita.
 ## Como funciona
 
 1. **Preparar a pergunta** — tira acentos (`translit`) e pontuação, passa para minúsculas e remove as 10 stopwords do grupo.
+   - **Entender erros de digitação** (ligado por padrão, só do Farol): uma palavra que não existe no corpus vira a mais parecida (`incendo` → `incendio`, `xangay` → `xangai`, `acidentes` → `acidente`). A tela mostra o que foi corrigido em "entendi assim". Desligando no painel, o motor fica exatamente igual ao do R.
 2. **Estágio 1 · o modelo escolhido**
    - **BM25** — k1 = 1,2 e b = 0,75.
    - **LSA** — SVD da matriz TF-IDF, com 50 dimensões (`lsa_k`).
    - **Híbrido** — fusão RRF do BM25 com o LSA (c = 60).
-3. **Frase exata** — o que estiver entre aspas tem que aparecer colado e na ordem (`aula08_frase.R`). Ponha entre aspas só a expressão, não a pergunta inteira: `terminal "águas profundas" xangai`. Se nenhum trecho tiver a frase, o Farol avisa e busca sem as aspas.
+3. **Frase exata** — o que estiver entre aspas tem que aparecer colado e na ordem (`aula08_frase.R`). Ponha entre aspas só a expressão, não a pergunta inteira: `terminal "águas profundas" xangai`. Com "entender erros" ligado, se nada tiver as palavras coladas, ele aceita plural e até 2 palavras no meio (`"incendio porto"` acha "incêndio da história do porto"). Se ainda assim nenhum trecho tiver a frase, o Farol avisa e busca sem as aspas.
 4. **Estágio 2 · proximidade** (opcional) — relê os `rerank_k` primeiros e sobe quem tem os termos em ordem e perto.
 5. **Resposta** — o Claude lê os 8 primeiros trechos (mais até 2 de cada porto, para perguntas que comparam) e responde citando cada um. Ele não usa nada de fora dos trechos; se eles não bastam, ele diz o que falta.
 
@@ -55,7 +56,17 @@ O motor é uma tradução para JavaScript do `motor08.R` (curso), do `estrutura/
 | LSA (50 dimensões) | 0,944 | 0,899 |
 | Híbrido (RRF) | 0,915 | 0,854 |
 
-Os rankings também batem consulta a consulta (mesmo top-5, mesmos cossenos do LSA até a 4ª casa).
+Os rankings também batem consulta a consulta (mesmo top-5, mesmos cossenos do LSA até a 4ª casa). Esses números são com "entender erros de digitação" **desligado**.
+
+Com ele ligado, o MAP sobe, porque algumas palavras das consultas do gabarito não existem no corpus do jeito que foram escritas (a principal é `acidentes`, que no corpus só aparece como `acidente`; a q14 vai de AP 0,313 para 0,833):
+
+| modelo | sem releitura | com releitura do top-3 |
+|---|---|---|
+| BM25 | 0,955 | 0,924 |
+| LSA (50 dimensões) | 0,970 | 0,955 |
+| Híbrido (RRF) | 0,977 | 0,932 |
+
+Somar plural e singular em toda busca foi testado e piorou o MAP (BM25 0,847, LSA 0,808), por isso as variações de plural ficam só na frase entre aspas.
 
 ## De onde vêm os dados
 
