@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Gerado a partir de estrutura/banco-de-dados (corpus.csv, necessidades.csv, qrels_consenso.csv, origens.rds)
-     e do motor do grupo (motor08.R + config.R + aula08_frase.R). Abre direto no navegador, sem servidor. -->
+<!-- Farol: motor de busca do grupo Enem (PI III). Dados de estrutura/banco-de-dados; motor traduzido de motor08.R + config.R + aula08_frase.R.
+     Abre direto no navegador. A resposta escrita pelo Claude so aparece quando a pagina roda no claude.ai (ver farol/README.md). -->
 <title>Farol dos Portos</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Interface de conversa sobre o motor de busca do grupo Enem (PI III, Fatec Baixada Santista): BM25 + releitura por proximidade nos portos de Santos, Xangai e Roterdã.">
+<meta name="description" content="Pergunte sobre os portos de Santos, Xangai e Roterdã: o motor do grupo Enem (BM25, LSA ou híbrido) encontra os trechos e o Claude escreve a resposta citando cada um.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
@@ -436,6 +436,58 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
 .dica-entrada { font-size: 12px; color: var(--muted); margin: 7px 4px 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .dica-entrada code { color: var(--ink-2); }
 
+/* escolha do modelo */
+.modelos { border: 0; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.modelos legend { position: absolute; left: -9999px; }
+.modelos label { position: relative; }
+.modelos input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.modelos label span {
+  display: inline-block; padding: 5px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
+  font: 600 13px var(--f-body); color: var(--ink-2);
+}
+.modelos input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.modelos input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.modelos label:hover input:not(:checked) + span { border-color: var(--accent); color: var(--accent); }
+.modelo-map { font: 400 12px var(--f-mono); color: var(--muted); margin-left: 4px; }
+.marcar { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 8px; font-size: 13px; font-weight: 500; align-items: start; }
+.marcar input { margin: 3px 0 0; accent-color: var(--accent); }
+.marcar small { grid-column: 2; color: var(--muted); font-weight: 400; font-size: 12px; }
+
+/* resposta escrita */
+.resposta-ia {
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: var(--raio); padding: 14px 18px 16px; display: grid; gap: 10px; box-shadow: var(--sombra); min-width: 0;
+}
+.resposta-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12.5px; color: var(--muted); }
+.resposta-cab b { font: 700 13px var(--f-display); color: var(--ink); letter-spacing: 0.01em; }
+.resposta-cab .tag-modelo { font: 500 11.5px var(--f-mono); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+.resposta-cab .parar { margin-left: auto; }
+.resposta-texto { font-size: 15.5px; line-height: 1.62; max-width: 70ch; overflow-wrap: break-word; min-width: 0; }
+.resposta-texto > :first-child { margin-top: 0; }
+.resposta-texto > :last-child { margin-bottom: 0; }
+.resposta-texto p { margin: 0 0 0.7em; }
+.resposta-texto ul, .resposta-texto ol { margin: 0 0 0.7em; padding-left: 1.3em; display: grid; gap: 4px; }
+.resposta-texto h5 { font: 700 15px var(--f-display); margin: 0.9em 0 0.35em; }
+.resposta-texto b { font-weight: 600; }
+.escrevendo { display: flex; align-items: center; gap: 10px; color: var(--ink-2); font-size: 14px; }
+.escrevendo::before {
+  content: ""; width: 14px; height: 14px; border-radius: 50%; flex: none;
+  border: 2px solid var(--line); border-top-color: var(--accent); animation: gira 0.8s linear infinite;
+}
+.cita {
+  border: 0; background: var(--accent-soft); color: var(--accent); font: 600 11.5px/1.5 var(--f-mono);
+  padding: 0 5px; border-radius: 5px; margin: 0 1px; vertical-align: 1px; cursor: pointer;
+}
+.cita:hover { background: var(--accent); color: var(--accent-ink); }
+.aviso { margin: 0; font-size: 13.5px; color: var(--warn); background: var(--warn-bg); padding: 8px 12px; border-radius: 8px; max-width: 72ch; }
+.fontes-tit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 4px; }
+.fontes-tit h3 { font-size: 15px; font-weight: 700; }
+.fontes-tit span { font-size: 12.5px; color: var(--muted); }
+.fonte-n { font: 700 12.5px var(--f-mono); background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 7px; }
+.extra-porto { font: 500 11.5px var(--f-body); color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 1px 8px; }
+.cartao.alvo { animation: piscar 1.4s ease-out 1; }
+@keyframes piscar { 0% { box-shadow: 0 0 0 3px var(--signal); } 100% { box-shadow: 0 0 0 3px transparent; } }
+
 /* dica flutuante */
 #dica {
   position: fixed; z-index: 60; pointer-events: none; background: var(--ink); color: var(--bg);
@@ -461,7 +513,6 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
 </style>
 </head>
 <body>
-
 <div class="app" lang="pt-BR">
   <aside class="painel" id="painel" aria-label="Como o motor funciona">
     <div class="painel-inner">
@@ -476,15 +527,19 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
         <ol class="fluxo">
           <li><div><b>Prepara a pergunta</b><span>tira acentos e pontuação, passa para minúsculas e remove as stopwords · <code>preparar()</code></span></div></li>
           <li><div><b>Consulta o índice invertido</b><span>em quais trechos cada termo aparece, e quão raro ele é · <code>indice_invertido()</code></span></div></li>
-          <li><div><b>Estágio 1 · BM25</b><span>dá uma nota a cada um dos 60 trechos · <code>ranking_bm25()</code></span></div></li>
-          <li><div><b>Estágio 2 · proximidade</b><span>relê só os primeiros e sobe quem tem os termos em ordem e perto · <code>rerank_prox()</code></span></div></li>
-          <li><div><b>Mostra e explica</b><span>os trechos, com as contas de cada nota</span></div></li>
+          <li><div><b>Estágio 1 · o modelo escolhido</b><span>BM25, LSA ou híbrido (RRF) ordenam os 60 trechos · <code>ranking_bm25()</code>, <code>ranking_lsa()</code>, <code>rrf()</code></span></div></li>
+          <li><div><b>Estágio 2 · proximidade</b><span>opcional: relê só os primeiros e sobe quem tem os termos em ordem e perto · <code>rerank_prox()</code></span></div></li>
+          <li><div><b>Escreve a resposta</b><span>o Claude lê só os primeiros trechos do ranking e responde citando cada um [1], [2]…</span></div></li>
         </ol>
       </section>
 
       <section class="bloco" aria-labelledby="rot-ajustes">
         <h2 class="rotulo" id="rot-ajustes">Ajustes do motor (config.R)</h2>
         <form class="ajustes" id="ajustes" onsubmit="return false">
+          <div class="ajuste" data-campo="lsa_k">
+            <label for="aj-lsak">lsa_k <small>dimensões do LSA</small></label>
+            <select id="aj-lsak"><option value="10">10</option><option value="20">20</option><option value="50" selected>50</option></select>
+          </div>
           <div class="ajuste" data-campo="k1">
             <label for="aj-k1">k1 <small>saturação da frequência</small></label><output id="out-k1" for="aj-k1">1,2</output>
             <input type="range" id="aj-k1" min="0" max="3" step="0.1" value="1.2">
@@ -506,10 +561,22 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
             <button class="btn" type="button" id="refazer" disabled>Refazer a última pergunta</button>
           </div>
           <div class="map" aria-live="polite">
-            <span>MAP só com o BM25</span><b id="map0">—</b>
+            <span>MAP do estágio 1 (<span id="map-nome">BM25</span>)</span><b id="map0">—</b>
             <span>MAP com a releitura</span><b id="map1">—</b>
             <small>Média do AP nas 11 consultas do gabarito do grupo que têm algum trecho de grau 2 (limiar = 2). Recalculado a cada ajuste.</small>
           </div>
+        </form>
+      </section>
+
+      <section class="bloco" aria-labelledby="rot-resp">
+        <h2 class="rotulo" id="rot-resp">Resposta escrita</h2>
+        <form class="ajustes" id="ajustes-resp" onsubmit="return false">
+          <div class="ajuste" data-campo="contexto">
+            <label for="aj-ctx">trechos lidos <small>os primeiros do ranking</small></label>
+            <select id="aj-ctx"><option value="5">5</option><option value="8" selected>8</option><option value="12">12</option></select>
+          </div>
+          <label class="marcar" for="aj-portos"><input type="checkbox" id="aj-portos" checked> Incluir ao menos 2 trechos de cada porto <small>ajuda em perguntas que comparam os portos</small></label>
+          <p class="nota-painel">O Claude lê só esses trechos e responde citando cada um. Ele não usa o que sabe de fora: se os trechos não respondem, ele diz.</p>
         </form>
       </section>
 
@@ -546,6 +613,13 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     <section class="conversa" id="conversa" aria-live="polite"></section>
 
     <form class="entrada" id="form" autocomplete="off">
+      <fieldset class="modelos" id="modelos">
+        <legend>Modelo de busca</legend>
+        <label><input type="radio" name="modelo" id="mod-bm25" value="bm25" checked><span>BM25</span></label>
+        <label><input type="radio" name="modelo" id="mod-lsa" value="lsa"><span>LSA</span></label>
+        <label><input type="radio" name="modelo" id="mod-hibrido" value="hibrido"><span>Híbrido</span></label>
+        <span class="modelo-map" id="modelo-map"></span>
+      </fieldset>
       <div class="caixa">
         <label for="pergunta" class="rotulo" style="position:absolute;left:-9999px">Pergunta</label>
         <textarea id="pergunta" rows="1" placeholder="Pergunte sobre os portos de Santos, Xangai ou Roterdã…"></textarea>
@@ -553,7 +627,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 16V4M4.5 9.5 10 4l5.5 5.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
-      <p class="dica-entrada"><span><kbd>Enter</kbd> envia · <kbd>Shift</kbd>+<kbd>Enter</kbd> quebra a linha</span><span>Aspas pedem frase exata: <code>terminal "águas profundas"</code></span></p>
+      <p class="dica-entrada"><span><kbd>Enter</kbd> envia · <kbd>Shift</kbd>+<kbd>Enter</kbd> quebra a linha</span><span>Aspas pedem frase exata: <code>terminal "águas profundas"</code></span><span>As respostas usam o seu uso do Claude</span></p>
     </form>
   </main>
 </div>
@@ -595,7 +669,9 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     b: 0.75,
     limiar: 2,
     prf_k: 0,
-    modelo: 'bm25',
+    modelo: 'bm25',      // 'bm25', 'lsa' ou 'hibrido' (Aula 07)
+    lsa_k: 50,
+    rrf_c: 60,
     rerank_k: 3,
     janela: 3,
   };
@@ -650,7 +726,84 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     ix.avgdl = ix.ids.reduce((s, id) => s + ix.dl[id], 0) / ix.N;
     ix.idf = {};
     for (const w of ix.vocab) ix.idf[w] = Math.log((ix.N - ix.df[w] + 0.5) / (ix.df[w] + 0.5) + 1);
+    ix.idfTfidf = {};                                          // Aula 01: log(N / df)
+    for (const w of ix.vocab) ix.idfTfidf[w] = Math.log(ix.N / ix.df[w]);
     return ix;
+  }
+
+  // Autovalores e autovetores de uma matriz simetrica (Jacobi ciclico)
+  function jacobi(A) {
+    const n = A.length, a = A.map((l) => Float64Array.from(l));
+    const v = Array.from({ length: n }, (_, i) => { const l = new Float64Array(n); l[i] = 1; return l; });
+    for (let varre = 0; varre < 100; varre++) {
+      let fora = 0, diag = 0;
+      for (let p = 0; p < n; p++) { diag += a[p][p] * a[p][p]; for (let q = p + 1; q < n; q++) fora += a[p][q] * a[p][q]; }
+      if (fora <= 1e-26 * diag) break;
+      for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
+        if (a[p][q] === 0) continue;
+        const th = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+        const t = (th >= 0 ? 1 : -1) / (Math.abs(th) + Math.sqrt(th * th + 1));
+        const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+        for (let k = 0; k < n; k++) {
+          const akp = a[k][p], akq = a[k][q];
+          a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq;
+        }
+        for (let k = 0; k < n; k++) {
+          const apk = a[p][k], aqk = a[q][k];
+          a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk;
+        }
+        for (let k = 0; k < n; k++) {
+          const vkp = v[k][p], vkq = v[k][q];
+          v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq;
+        }
+      }
+    }
+    return { vals: a.map((l, i) => l[i]), vecs: v };
+  }
+
+  // lsa(ix, k) do motor08: SVD da matriz TF-IDF W (termos x documentos).
+  // Feita pelos autovetores de W'W (60 x 60): W'W = V S^2 V'. Guarda tudo; k escolhe quantas dimensoes usar.
+  function lsa(ix) {
+    const N = ix.N;
+    const w = ix.ids.map((id) => { const m = {}; for (const t in ix.tf[id]) m[t] = ix.tf[id][t] * ix.idfTfidf[t]; return m; });
+    const G = Array.from({ length: N }, () => new Float64Array(N));
+    for (let i = 0; i < N; i++) for (let j = i; j < N; j++) {
+      let s = 0; const a = w[i], b = w[j];
+      for (const t in a) if (t in b) s += a[t] * b[t];
+      G[i][j] = s; G[j][i] = s;
+    }
+    const { vals, vecs } = jacobi(G);
+    const ordem = vals.map((x, i) => i).sort((x, y) => vals[y] - vals[x]);
+    const sig = ordem.map((i) => Math.sqrt(Math.max(vals[i], 0)));
+    const V = ix.ids.map((_, j) => ordem.map((i) => vecs[j][i]));   // documentos x dimensoes
+    return { w, sig, V };
+  }
+
+  // ranking_lsa: dobra a consulta (U' q) e mede o cosseno com cada documento (V S), em k dimensoes
+  function rankingLSA(qt, ix, m, k) {
+    const q = {};
+    for (const t of qt) if (t in ix.df) q[t] = (q[t] || 0) + ix.idfTfidf[t];
+    const a = m.w.map((col) => { let s = 0; for (const t in q) if (t in col) s += q[t] * col[t]; return s; });
+    k = Math.min(k, m.sig.filter((x) => x > 1e-9).length);
+    const qk = [];
+    for (let c = 0; c < k; c++) { let s = 0; for (let j = 0; j < a.length; j++) s += m.V[j][c] * a[j]; qk.push(s / m.sig[c]); }
+    const nq = Math.sqrt(qk.reduce((s, x) => s + x * x, 0));
+    const s = {};
+    ix.ids.forEach((id, j) => {
+      let dot = 0, nd = 0;
+      for (let c = 0; c < k; c++) { const d = m.V[j][c] * m.sig[c]; dot += qk[c] * d; nd += d * d; }
+      const den = nq * Math.sqrt(nd);
+      s[id] = den === 0 ? 0 : dot / den;
+    });
+    return { ids: ordenar(ix.ids, s), s };
+  }
+
+  // rrf(..., c = 60): soma de 1 / (c + posicao); empate fica na ordem do primeiro ranking
+  function rrf(rks, c) {
+    const ids = [...new Set(rks.flat())];
+    const s = {};
+    for (const id of ids) s[id] = rks.reduce((acc, r) => { const p = r.indexOf(id); return acc + (p >= 0 ? 1 / (c + p + 1) : 0); }, 0);
+    return { ids: ordenar(ids, s), s };
   }
 
   // bm25(termos, ix, k1, b), com a parcela de cada termo guardada
@@ -723,10 +876,20 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     const noVocab = termosUnicos.filter((t) => t in ix.df);
     const foraVocab = termosUnicos.filter((t) => !(t in ix.df));
 
-    // Estagio 1: BM25 em todos os N documentos
+    // Estagio 1: o modelo do grupo (cfg.modelo) em todos os N documentos.
+    // O BM25 e sempre calculado: ele explica quais termos cada trecho tem.
     const { s, parcelas } = bm25(qt, ix, cfg.k1, cfg.b);
-    const rk1 = ordenar(ix.ids, s);
-    const comEscore = rk1.filter((id) => s[id] > 0);
+    const rkBM25 = ordenar(ix.ids, s);
+    const modelo = cfg.modelo || 'bm25';
+    let rk1 = rkBM25, sc1 = s, lsaS = null;
+    if (modelo !== 'bm25' && ix.lsa) {
+      const L = rankingLSA(qt, ix, ix.lsa, cfg.lsa_k);
+      lsaS = L.s;
+      if (modelo === 'lsa') { rk1 = L.ids; sc1 = L.s; }
+      else { const H = rrf([rkBM25, L.ids], cfg.rrf_c); rk1 = H.ids; sc1 = H.s; }
+    }
+    // candidatos: no BM25, quem tem algum termo; no LSA e no hibrido, tambem quem e parecido (cosseno > 0)
+    const comEscore = qt.length ? rk1.filter((id) => s[id] > 0 || (lsaS && lsaS[id] > 0)) : [];
 
     // Busca AND (Aula 03), so para informar
     const and = noVocab.length === termosUnicos.length && termosUnicos.length
@@ -744,10 +907,11 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     for (const id of rkFiltro.slice(0, k)) prox[id] = proximidade(qt, ix.tokens[id], cfg.janela, true);
     const sc = {}; for (const id in prox) sc[id] = prox[id].s;
     const rkFinal = k > 0 ? reordenar(rkFiltro, k, sc) : rkFiltro.slice();
-    // o ranking inteiro, como o R devolve (os de escore 0 no fim, na ordem do corpus): e o que o AP usa
-    const rkCompleto = frases.length ? rkFinal : rkFinal.concat(rk1.filter((id) => !(s[id] > 0)));
+    // o ranking inteiro, como o R devolve (os de fora no fim, na ordem do estagio 1): e o que o AP usa
+    const dentro = new Set(rkFinal);
+    const rkCompleto = frases.length ? rkFinal : rkFinal.concat(rk1.filter((id) => !dentro.has(id)));
 
-    return { consulta: texto, prep, qt, termosUnicos, noVocab, foraVocab, escores: s, parcelas, rk1, comEscore, and, frases, rkFiltro, k, prox, rkFinal, rkCompleto };
+    return { consulta: texto, prep, qt, termosUnicos, noVocab, foraVocab, escores: s, parcelas, modelo, rkBM25, rk1, sc1, lsaS, comEscore, and, frases, rkFiltro, k, prox, rkFinal, rkCompleto };
   }
 
   // Metricas da Aula 5,5 (relevancia + AP), para as consultas do gabarito
@@ -759,7 +923,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     return soma / R;
   }
 
-  const Motor = { CFG, limpar, preparar, prepararExplicado, montar, bm25, ordenar, proximidade, reordenar, frase, aspas, buscar, ap };
+  const Motor = { CFG, limpar, preparar, prepararExplicado, montar, bm25, ordenar, lsa, rankingLSA, rrf, proximidade, reordenar, frase, aspas, buscar, ap };
   if (typeof module !== 'undefined' && module.exports) module.exports = Motor; else raiz.Motor = Motor;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -772,6 +936,13 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
   const PADRAO = Object.assign({}, M.CFG);
   let cfg = Object.assign({}, PADRAO);
   const IX = M.montar(DADOS.corpus, cfg);           // o indice so depende da limpeza e das stopwords (fixas)
+  IX.lsa = M.lsa(IX);                               // a SVD sai uma vez; lsa_k so escolhe quantas dimensoes usar
+  const NOME_MODELO = { bm25: 'BM25', lsa: 'LSA', hibrido: 'Híbrido' };
+  // o Claude que escreve a resposta (capability "sample"): null quando esta visualizacao nao oferece
+  const sampleP = (window.claude && typeof window.claude.use === 'function')
+    ? Promise.resolve(window.claude.use('sample')).catch(() => null)
+    : Promise.resolve(null);
+  let claudeNegado = false;
   const DOC = Object.fromEntries(DADOS.corpus.map((d) => [d.id, d]));
   const PORTO = { santos: 'Porto de Santos', xangai: 'Porto de Xangai', roterda: 'Porto de Roterdã' };
   const PORTO_CURTO = { santos: 'Santos', xangai: 'Xangai', roterda: 'Roterdã' };
@@ -918,7 +1089,7 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
       IX.postings[t].forEach((id) => c[DOC[id].porto]++);
       return `<div>${chip(t, cores.get(t))}${Object.keys(c).map((p) => `<span class="${p}" style="display:inline-flex;gap:5px;align-items:center"><span class="ponto"></span>${PORTO_CURTO[p]} ${c[p]}</span>`).join('')}</div>`;
     }).join('');
-    let resumo = `${r.comEscore.length} dos ${IX.N} trechos têm pelo menos um termo da pergunta`;
+    let resumo = `${IX.ids.filter((id) => r.escores[id] > 0).length} dos ${IX.N} trechos têm pelo menos um termo da pergunta`;
     if (r.noVocab.length > 1) resumo += r.and.length ? `; ${r.and.length} ${plural(r.and.length, 'tem', 'têm')} todos (busca AND da Aula 03)` : '; nenhum tem todos (busca AND da Aula 03)';
     return `<li class="etapa"><div class="etapa-num">2</div><div class="etapa-corpo">
       <h4>Consultar o índice invertido <span class="fn">ix$postings · idf_bm25()</span></h4>
@@ -930,7 +1101,8 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
   }
 
   function etapaBM25(r, cores, c) {
-    const top = r.comEscore.slice(0, 5);
+    const comTermo = r.rkBM25.filter((id) => r.escores[id] > 0);
+    const top = comTermo.slice(0, 5);
     const max = top.length ? r.escores[top[0]] : 1;
     const barras = top.map((id, i) => {
       const ag = agrega(r.parcelas[id]);
@@ -951,11 +1123,11 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
       return `<tr><td>${i + 1}º ${curto(id)}</td><td>${IX.dl[id]}</td><td>${nf(K, 3)}</td>${cels}<td class="tot">${nf(r.escores[id], 3)}</td></tr>`;
     }).join('');
     const idfs = r.noVocab.map((t) => `IDF(${t}) = ${nf(IX.idf[t], 3)}`).join(' · ');
-    const resumo = r.comEscore.length
-      ? `Dei uma nota a cada um dos ${IX.N} trechos somando a contribuição de cada termo. ${r.comEscore.length} ficaram acima de zero; o 1º somou <b class="num">${nf(r.escores[r.comEscore[0]])}</b> pontos.`
+    const resumo = comTermo.length
+      ? `Dei uma nota a cada um dos ${IX.N} trechos somando a contribuição de cada termo. ${comTermo.length} ficaram acima de zero; o 1º somou <b class="num">${nf(r.escores[comTermo[0]])}</b> pontos.`
       : `Dei uma nota a cada um dos ${IX.N} trechos, mas todos ficaram com zero: nenhum tem os termos da pergunta.`;
     return `<li class="etapa"><div class="etapa-num">3</div><div class="etapa-corpo">
-      <h4>Estágio 1 · BM25 <span class="fn">ranking_bm25(consulta, ix, cfg)</span></h4>
+      <h4>${r.modelo === 'bm25' ? 'Estágio 1 · BM25' : r.modelo === 'hibrido' ? 'BM25 · metade do híbrido' : 'BM25 · só para comparar'} <span class="fn">ranking_bm25(consulta, ix, cfg)</span></h4>
       <p class="resumo">${resumo}</p>
       ${top.length ? `${legenda}<div class="barras" role="img" aria-label="Notas BM25 dos 5 primeiros trechos, divididas por termo">${barras}</div>
       <p class="eixo-nota">Cada cor é a parte da nota que veio de um termo. Passe o mouse sobre os segmentos para ver os valores.</p>
@@ -970,11 +1142,36 @@ ${esc(idfs)}</div>
     </div></li>`;
   }
 
+  // LSA e hibrido: a ordem do estagio 1 vem daqui
+  function etapaModelo(r, c) {
+    if (r.modelo === 'bm25' || !r.lsaS) return '';
+    const posB = (id) => r.rkBM25.indexOf(id) + 1;
+    const rkL = M.ordenar(IX.ids, r.lsaS);
+    const posL = (id) => rkL.indexOf(id) + 1;
+    const top = r.rk1.slice(0, 5);
+    const linhas = top.map((id, i) => {
+      const cels = r.modelo === 'lsa'
+        ? `<td>${nf(r.lsaS[id], 3)}</td><td>${r.escores[id] > 0 ? posB(id) + 'º' : '—'}</td>`
+        : `<td>${posB(id)}º</td><td>${posL(id)}º</td><td class="tot">${nf(r.sc1[id] * 1000, 2)}</td>`;
+      return `<tr><td>${i + 1}º <span class="${DOC[id].porto}" style="display:inline-flex;gap:5px;align-items:center"><span class="ponto"></span>${curto(id)}</span></td>${cels}</tr>`;
+    }).join('');
+    const cab = r.modelo === 'lsa' ? '<th>Cosseno</th><th>Posição no BM25</th>' : '<th>Posição no BM25</th><th>Posição no LSA</th><th>RRF × 1000</th>';
+    const semTermos = top.filter((id) => !(r.escores[id] > 0)).length;
+    const resumo = r.modelo === 'lsa'
+      ? `Projetei a pergunta e os ${IX.N} trechos em ${Math.min(c.lsa_k, IX.N)} dimensões da SVD da matriz TF-IDF e ordenei pelo cosseno.${semTermos ? ` ${semTermos} dos 5 primeiros ${plural(semTermos, 'não tem', 'não têm')} nenhuma palavra da pergunta: o LSA ${plural(semTermos, 'o achou', 'os achou')} pelo assunto parecido.` : ''}`
+      : `Juntei o ranking do BM25 e o do LSA (${Math.min(c.lsa_k, IX.N)} dimensões) pela fusão RRF: cada trecho soma 1 / (${c.rrf_c} + posição) nos dois rankings.`;
+    return `<li class="etapa"><div class="etapa-num">0</div><div class="etapa-corpo">
+      <h4>Estágio 1 · ${r.modelo === 'lsa' ? 'LSA' : 'híbrido (RRF)'} <span class="fn">${r.modelo === 'lsa' ? `ranking_lsa(consulta, ix, cfg, lsa(ix, ${c.lsa_k}))` : `rrf(bm25, lsa, c = ${c.rrf_c})`}</span></h4>
+      <p class="resumo">${resumo}</p>
+      <div class="tabela-wrap"><table class="contas"><thead><tr><th>Trecho</th>${cab}</tr></thead><tbody>${linhas}</tbody></table></div>
+    </div></li>`;
+  }
+
   function etapaFrase(r) {
     if (!r.frases.length) return '';
     return `<li class="etapa"><div class="etapa-num">4</div><div class="etapa-corpo">
       <h4>Filtro de frase exata <span class="fn">busca_aspas() · aula08_frase.R</span></h4>
-      <p class="resumo">A pergunta tem aspas. Dos ${r.comEscore.length} trechos com nota, ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'tem', 'têm')} ${plural(r.frases.length, 'a frase', 'todas as frases')} com as palavras coladas e nessa ordem. Os outros saem da lista; a ordem do BM25 fica.</p>
+      <p class="resumo">A pergunta tem aspas. Dos ${r.comEscore.length} trechos com nota, ${r.rkFiltro.length} ${plural(r.rkFiltro.length, 'tem', 'têm')} ${plural(r.frases.length, 'a frase', 'todas as frases')} com as palavras coladas e nessa ordem. Os outros saem da lista; a ordem do estágio 1 fica.</p>
       <div class="chips">${r.frases.map((f) => `<span class="chip frase">“${esc(f.join(' '))}”</span>`).join('')}</div>
     </div></li>`;
   }
@@ -985,7 +1182,7 @@ ${esc(idfs)}</div>
     if (r.k === 0) {
       return `<li class="etapa est2"><div class="etapa-num">${n}</div><div class="etapa-corpo">
         <h4>Estágio 2 · proximidade <span class="fn">rerank_prox()</span></h4>
-        <p class="resumo">Desligado nos ajustes (rerank_k = 0): a ordem final é a do BM25.</p></div></li>`;
+        <p class="resumo">Desligado nos ajustes (rerank_k = 0): a ordem final é a do estágio 1 (${NOME_MODELO[r.modelo]}).</p></div></li>`;
     }
     const antes = r.rkFiltro.slice(0, r.k);
     const depois = r.rkFinal.slice(0, r.k);
@@ -1002,7 +1199,7 @@ ${esc(idfs)}</div>
           <div class="rl-pares">${pares}</div></div>
         <div class="rl-score">${nf(p.s)}<small>proximidade</small></div></div>`;
     }).join('');
-    const resumo = `Reli só os ${r.k} primeiros do BM25, procurando pares de termos da pergunta na mesma ordem e a até ${c.janela} ${plural(c.janela, 'posição', 'posições')} de distância. ` +
+    const resumo = `Reli só os ${r.k} primeiros do estágio 1 (${NOME_MODELO[r.modelo]}), procurando pares de termos da pergunta na mesma ordem e a até ${c.janela} ${plural(c.janela, 'posição', 'posições')} de distância. ` +
       (mudou ? `<b>${mudou} ${plural(mudou, 'trecho mudou', 'trechos mudaram')} de lugar.</b>` : 'A ordem ficou a mesma.');
     return `<li class="etapa est2"><div class="etapa-num">${n}</div><div class="etapa-corpo">
       <h4>Estágio 2 · releitura por proximidade <span class="fn">rerank_prox(rk, qt, tokens, k = ${r.k}, janela = ${c.janela})</span></h4>
@@ -1022,7 +1219,15 @@ ${esc(idfs)}</div>
     const ag = agrega(r.parcelas[id]);
     const termos = [...ag.entries()].sort((a, b) => b[1].parcela - a[1].parcela);
     const fr = [];
-    if (!termos.length) { fr.push('Nenhum termo da pergunta aparece neste trecho.'); return fr; }
+    if (r.lsaS && r.modelo !== 'bm25') {
+      const posL = M.ordenar(IX.ids, r.lsaS).indexOf(id) + 1;
+      fr.push(`No LSA ficou em ${posL}º (cosseno ${nf(r.lsaS[id], 3)})${r.modelo === 'hibrido' ? `; no BM25, em ${r.rkBM25.indexOf(id) + 1}º` : ''}.`);
+    }
+    if (!termos.length) {
+      fr.push(r.modelo === 'bm25' ? 'Nenhum termo da pergunta aparece neste trecho.'
+        : 'Não tem nenhuma palavra da pergunta: o LSA o trouxe porque o assunto é parecido.');
+      return fr;
+    }
     fr.push('Tem ' + lista(termos.map(([t, v]) => `${chip(t, cores.get(t))} ${v.f}×`)) + '.');
     const [t0, v0] = termos[0];
     const df = IX.df[t0];
@@ -1044,18 +1249,28 @@ ${esc(idfs)}</div>
     return fr;
   }
 
-  function cartao(rid, id, pos) {
+  function nota(r, id) {
+    if (r.modelo === 'lsa') return `${nf(r.sc1[id], 3)} <small>cosseno LSA</small>`;
+    if (r.modelo === 'hibrido') return `${nf(r.sc1[id] * 1000, 2)} <small>RRF × 1000</small>`;
+    return `${nf(r.escores[id])} <small>pts BM25</small>`;
+  }
+
+  // n: o numero que o Claude usa para citar (so nos trechos que ele leu)
+  function cartao(rid, id, pos, n) {
     const st = respostas.get(rid);
     const r = st.r, cores = st.cores;
     const d = DOC[id];
     const a = r.rkFiltro.indexOf(id) + 1;
-    const mov = r.prox[id] && a !== pos ? (a > pos ? `<span class="mov sobe">▲ era ${a}º no BM25</span>` : `<span class="mov desce">▼ era ${a}º no BM25</span>`) : '';
+    const nomeEst1 = NOME_MODELO[r.modelo];
+    const mov = r.prox[id] && a !== pos ? (a > pos ? `<span class="mov sobe">▲ era ${a}º no ${nomeEst1}</span>` : `<span class="mov desce">▼ era ${a}º no ${nomeEst1}</span>`) : '';
     const gab = st.nec ? selo((DADOS.qrels[st.nec.q] || {})[id]) : '';
-    const destaque = pos === 1;
-    return `<article class="cartao${destaque ? ' destaque' : ''}">
-      <div class="cartao-topo"><span class="cartao-pos">${pos}º</span>${portoChip(d.porto)}<span class="doc-id">${esc(id)}</span>${mov}${gab}
-        <span class="pts">${nf(r.escores[id])} <small>pts BM25</small></span></div>
-      <p class="trecho${destaque ? '' : ' curto'}">${realcar(d.original, cores)}</p>
+    const destaque = false;
+    const numero = n ? `<span class="fonte-n" id="${rid}-f${n}">[${n}]</span>` : '';
+    const extra = n && st.extras && st.extras.has(id) ? '<span class="extra-porto">incluído para cobrir os 3 portos</span>' : '';
+    return `<article class="cartao" data-n="${n || ''}">
+      <div class="cartao-topo">${numero}<span class="cartao-pos" title="posição no ranking final">${pos}º</span>${portoChip(d.porto)}<span class="doc-id">${esc(id)}</span>${mov}${extra}${gab}
+        <span class="pts">${nota(r, id)}</span></div>
+      <p class="trecho curto">${realcar(d.original, cores)}</p>
       <ul class="porque">${porque(r, id, cores).map((f) => `<li>${f}</li>`).join('')}</ul>
       <div class="cartao-acoes">
         ${destaque ? '' : '<button type="button" class="link" data-acao="ler">Ler o trecho inteiro</button>'}
@@ -1070,10 +1285,28 @@ ${esc(idfs)}</div>
     const g = DADOS.qrels[n.q] || {};
     const julg = Object.keys(g).length;
     const ap0 = M.ap(st.r.rk1, g, st.cfg.limiar), ap1 = M.ap(st.r.rkCompleto, g, st.cfg.limiar);
-    const apTxt = n.R ? `<div class="ap-linha"><span>AP só com o BM25 <b>${nf(ap0, 3)}</b></span><span>AP com a releitura <b>${nf(ap1, 3)}</b></span><span>trechos de grau 2: <b>${n.R}</b></span></div>`
+    const apTxt = n.R ? `<div class="ap-linha"><span>AP do estágio 1 (${NOME_MODELO[st.r.modelo]}) <b>${nf(ap0, 3)}</b></span>${st.cfg.rerank_k ? `<span>AP com a releitura <b>${nf(ap1, 3)}</b></span>` : ''}<span>trechos de grau 2: <b>${n.R}</b></span></div>`
       : '<p>Nenhum trecho desta consulta recebeu grau 2, então ela fica fora do MAP.</p>';
     return `<section class="gabarito"><h4>Esta pergunta é a ${n.q} do gabarito do grupo <span class="doc-id">${julg} ${plural(julg, 'trecho julgado', 'trechos julgados')}</span></h4>
       <p><b>Necessidade:</b> ${esc(n.necessidade)}</p>${apTxt}</section>`;
+  }
+
+  // Os trechos que o Claude le: os primeiros do ranking final e, se pedido, ate 2 de cada porto
+  function contexto(r, c) {
+    const base = r.rkFinal.slice(0, c.contexto);
+    const extras = new Set();
+    if (c.portos) {
+      for (const p of ['santos', 'xangai', 'roterda']) {
+        let tem = base.concat([...extras]).filter((id) => DOC[id].porto === p).length;
+        for (const id of r.rkFinal) {
+          if (tem >= 2) break;
+          if (DOC[id].porto !== p || base.includes(id) || extras.has(id)) continue;
+          extras.add(id); tem++;
+        }
+      }
+    }
+    const ids = base.concat(r.rkFinal.filter((id) => extras.has(id)));   // extras na ordem do ranking
+    return { ids, extras };
   }
 
   function respostaHTML(rid) {
@@ -1081,40 +1314,118 @@ ${esc(idfs)}</div>
     const r = st.r, c = st.cfg;
     const cores = st.cores;
     const final = r.rkFinal;
-    let lead;
+    const est1 = r.modelo === 'bm25' ? `BM25 (k1 = ${nf(c.k1, 1)}, b = ${nf(c.b, 2)})`
+      : r.modelo === 'lsa' ? `LSA (${c.lsa_k} dimensões)` : `híbrido RRF (BM25 + LSA ${c.lsa_k}, c = ${c.rrf_c})`;
+    const est2 = c.rerank_k ? ` e releitura do top-${c.rerank_k} por proximidade (janela ${c.janela})` : '';
+    let topo;
     if (!final.length) {
-      lead = r.qt.length
-        ? `<p class="lead">Não encontrei nenhum trecho ${r.frases.length && r.comEscore.length ? 'com a frase entre aspas' : 'com essas palavras'}. O motor só acha o que está escrito igual nos trechos; tente outra palavra ou a forma no singular.</p>`
+      topo = r.qt.length
+        ? `<p class="lead">Não encontrei nenhum trecho ${r.frases.length && r.comEscore.length ? 'com a frase entre aspas' : 'com essas palavras'}. ${r.modelo === 'bm25' ? 'O BM25 só acha o que está escrito igual nos trechos; experimente o LSA, que busca pelo assunto, ou tente outra palavra.' : 'Tente outra palavra.'}</p>`
         : '<p class="lead">Sobrou nada para procurar: todas as palavras eram stopwords.</p>';
     } else {
-      const top5 = final.slice(0, 5);
-      const cont = {}; top5.forEach((id) => { cont[DOC[id].porto] = (cont[DOC[id].porto] || 0) + 1; });
-      const ent = Object.entries(cont).sort((a, b) => b[1] - a[1]);
-      const base = r.frases.length ? 'com a frase entre aspas' : 'com pelo menos uma palavra da pergunta';
-      const p1 = PORTO[DOC[final[0]].porto];
-      let txt = `Encontrei <b>${final.length}</b> ${plural(final.length, 'trecho', 'trechos')} ${base}. `;
-      if (final.length === 1) txt += `Ele é do <b>${p1}</b>.`;
-      else {
-        txt += `O mais bem colocado é do <b>${p1}</b>. `;
-        const quais = top5.length === final.length ? (top5.length === 2 ? 'Os dois' : `Os ${top5.length}`) : `Entre os ${top5.length} primeiros,`;
-        txt += ent.length === 1 ? `${top5.length === final.length ? quais + ' são' : quais + ' todos são'} de ${PORTO_CURTO[ent[0][0]]}.`
-          : `${top5.length === final.length ? 'Por porto' : `Entre os ${top5.length} primeiros`}: ${lista(ent.map(([p, n]) => `${n} de ${PORTO_CURTO[p]}`))}.`;
-      }
-      lead = `<p class="lead">${txt}</p>`;
+      topo = `<div class="resposta-ia" id="${rid}-resp">
+        <div class="resposta-cab"><b>Resposta</b><span class="tag-modelo">${NOME_MODELO[r.modelo]} · ${st.ctx.ids.length} trechos lidos</span>
+          <button type="button" class="btn parar" data-acao="parar" hidden>Parar</button></div>
+        <div class="resposta-texto" id="${rid}-texto"><div class="escrevendo">Escrevendo a resposta com os ${st.ctx.ids.length} trechos encontrados…</div></div>
+      </div>`;
     }
-    const nCart = Math.min(st.mostrar, final.length);
-    const cards = final.slice(0, nCart).map((id, i) => cartao(rid, id, i + 1)).join('');
-    const mais = final.length > nCart ? `<button type="button" class="btn" data-acao="mais" style="justify-self:start">Mostrar mais ${Math.min(5, final.length - nCart)} ${plural(Math.min(5, final.length - nCart), 'trecho', 'trechos')}</button>` : '';
-    const lidos = r.k;
-    const etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaFrase(r) + etapaProx(r, c);
-    const nEtapas = (etapas.match(/<li class="etapa/g) || []).length;
-    return `<details class="raciocinio"${st.abrir ? ' open' : ''}>
-        <summary><span class="seta"></span><b>Raciocínio do motor</b> ${nEtapas} etapas <span class="meta">${IX.N} trechos pontuados · ${lidos} ${plural(lidos, 'relido', 'relidos')}</span></summary>
+    const cards = st.ctx.ids.map((id, i) => cartao(rid, id, final.indexOf(id) + 1, i + 1)).join('');
+    const resto = final.length - st.ctx.ids.length;
+    const mais = resto > 0 ? `<button type="button" class="btn" data-acao="mais" style="justify-self:start">Ver mais ${Math.min(5, resto)} do ranking (o Claude não leu)</button>` : '';
+    const fontes = st.ctx.ids.length ? `<div class="fontes-tit"><h3>Trechos que o Claude leu</h3><span>numerados como nas citações · ${st.ctx.extras.size ? 'na ordem do ranking, mais os incluídos para cobrir os portos' : 'na ordem do ranking final'}</span></div>` : '';
+    let etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaModelo(r, c) + etapaFrase(r) + etapaProx(r, c);
+    let num = 0;
+    etapas = etapas.replace(/<div class="etapa-num">\d+<\/div>/g, () => `<div class="etapa-num">${++num}</div>`);
+    return `${topo}
+      <div class="resposta">${blocoGabarito(st)}${fontes}${cards}${mais}</div>
+      <details class="raciocinio"${st.abrir ? ' open' : ''}>
+        <summary><span class="seta"></span><b>Raciocínio do motor</b> ${num} etapas <span class="meta">${IX.N} trechos ordenados · ${r.k} ${plural(r.k, 'relido', 'relidos')}</span></summary>
         <ol class="etapas">${etapas}</ol>
       </details>
-      <div class="resposta">${lead}${blocoGabarito(st)}${cards}${mais}
-        <p class="rodape">Resposta montada só com as contas do motor do grupo: BM25 (k1 = ${nf(c.k1, 1)}, b = ${nf(c.b, 2)}) e releitura do top-${c.rerank_k} por proximidade (janela ${c.janela}). Nenhuma frase foi escrita por um modelo de linguagem: os trechos são da Wikipédia (CC BY-SA) e as explicações saem dos números acima.</p>
-      </div>`;
+      <p class="rodape">Busca: ${est1}${est2}, igual ao motor do grupo no R. A resposta é escrita pelo Claude só com os trechos numerados acima (Wikipédia, CC BY-SA); confira cada afirmação na citação.</p>`;
+  }
+
+  // Markdown simples da resposta: paragrafos, listas, **negrito**, titulos e citacoes [n]
+  function md(texto, rid, nMax) {
+    const inline = (s) => esc(s)
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+      .replace(/\[(\d+(?:\s*[,;]\s*\d+)*)\]/g, (m, nums) => nums.split(/[,;]/).map((x) => {
+        const n = parseInt(x, 10);
+        return n >= 1 && n <= nMax ? `<button type="button" class="cita" data-acao="cita" data-alvo="${rid}-f${n}" title="ir ao trecho ${n}">${n}</button>` : `[${n}]`;
+      }).join(''));
+    return String(texto).replace(/\r/g, '').split(/\n{2,}/).map((bloco) => {
+      const linhas = bloco.split('\n').filter((l) => l.trim());
+      if (!linhas.length) return '';
+      if (linhas.every((l) => /^\s*[-*•]\s+/.test(l))) return `<ul>${linhas.map((l) => `<li>${inline(l.replace(/^\s*[-*•]\s+/, ''))}</li>`).join('')}</ul>`;
+      if (linhas.every((l) => /^\s*\d+[.)]\s+/.test(l))) return `<ol>${linhas.map((l) => `<li>${inline(l.replace(/^\s*\d+[.)]\s+/, ''))}</li>`).join('')}</ol>`;
+      if (linhas.length === 1 && /^#{1,6}\s+/.test(linhas[0])) return `<h5>${inline(linhas[0].replace(/^#{1,6}\s+/, ''))}</h5>`;
+      return linhas.map((l) => /^#{1,6}\s+/.test(l) ? `<h5>${inline(l.replace(/^#{1,6}\s+/, ''))}</h5>`
+        : /^\s*[-*•]\s+/.test(l) ? `<ul><li>${inline(l.replace(/^\s*[-*•]\s+/, ''))}</li></ul>` : `<p>${inline(l)}</p>`).join('');
+    }).join('');
+  }
+
+  function promptPara(st) {
+    const r = st.r;
+    const trechos = st.ctx.ids.map((id, i) => `[${i + 1}] (${PORTO[DOC[id].porto]}) ${DOC[id].original}`).join('\n\n');
+    return `Você é o Farol, o assistente do motor de busca do grupo Enem (Projeto Integrador III). O corpus são 60 trechos da Wikipédia em português sobre os portos de Santos, Xangai e Roterdã. O motor (${NOME_MODELO[r.modelo]}) recuperou os trechos numerados abaixo para a pergunta.
+
+Regras:
+- Responda em português do Brasil, de forma direta e organizada.
+- Use SOMENTE as informações dos trechos. Não acrescente nada que você saiba de fora.
+- Cite os trechos usados com o número entre colchetes logo depois da informação, como [2] ou [1][3].
+- Se os trechos não bastarem para responder alguma parte da pergunta, diga claramente o que falta, em uma frase.
+- Não invente números, datas ou nomes.
+- Para comparações, organize por porto ou em tópicos curtos. Use **negrito** só para nomes ou números importantes.
+- Seja breve: no máximo uns 200 palavras.
+
+Pergunta: ${r.consulta}
+
+Trechos:
+${trechos}`;
+  }
+
+  const ERRO_CLAUDE = {
+    rate_limited: 'Muitas perguntas seguidas, ou o seu limite de uso do Claude acabou. Espere um pouco e refaça a pergunta.',
+    session_expired: 'Sua sessão no Claude expirou. Entre de novo e refaça a pergunta.',
+    refused: 'O Claude não respondeu a esta pergunta. Reformule e tente de novo.',
+    empty_completion: 'O Claude não escreveu nada. Tente reformular a pergunta.',
+    prompt_too_large: 'Trechos demais para uma resposta. Diminua “trechos lidos” no painel.',
+  };
+
+  async function escrever(rid, ia) {
+    const st = respostas.get(rid);
+    const alvo = ia.querySelector(`#${rid}-texto`);
+    if (!alvo) return;
+    const parar = ia.querySelector('[data-acao="parar"]');
+    const sample = await sampleP;
+    if (!sample || claudeNegado) {
+      alvo.innerHTML = !window.claude
+        ? '<p class="aviso">Este arquivo está aberto fora do claude.ai, então a resposta escrita não aparece. A busca, os trechos e as contas funcionam normalmente; para a resposta, abra o Farol pelo link do claude.ai.</p>'
+        : `<p class="aviso">A resposta escrita precisa do Claude, que não está disponível ${claudeNegado ? 'porque o acesso foi recusado nesta visualização' : 'nesta visualização'}. Os trechos que o motor encontrou estão logo abaixo.</p>`;
+      return;
+    }
+    const ctl = new AbortController();
+    st.ctl = ctl;
+    parar.hidden = false;
+    const nMax = st.ctx.ids.length;
+    try {
+      const { truncated } = await sample(promptPara(st), {
+        signal: ctl.signal,
+        onText: ({ text }) => { alvo.innerHTML = md(text, rid, nMax); },
+      });
+      if (truncated) alvo.insertAdjacentHTML('beforeend', '<p class="aviso">A resposta foi cortada no meio. Faça uma pergunta mais específica.</p>');
+    } catch (e) {
+      const parcial = e && e.text ? md(e.text, rid, nMax) : '';
+      const code = e && e.code;
+      if (code === 'cancelled') alvo.innerHTML = parcial || '<p class="aviso">Resposta interrompida.</p>';
+      else if (code === 'not_granted' || code === 'sampling_disabled' || code === 'capability_disabled' || code === 'not_declared') {
+        claudeNegado = true;
+        alvo.innerHTML = '<p class="aviso">Sem permissão para usar o Claude nesta visualização, então não há resposta escrita. Os trechos que o motor encontrou estão logo abaixo.</p>';
+      } else alvo.innerHTML = parcial + `<p class="aviso">${ERRO_CLAUDE[code] || 'A conexão com o Claude falhou. Refaça a pergunta em instantes.'}</p>`;
+    } finally {
+      parar.hidden = true;
+      st.ctl = null;
+    }
   }
 
   // ---------- conversa ----------
@@ -1139,29 +1450,38 @@ ${esc(idfs)}</div>
 
   function sugestoesHTML() {
     const ex = [
+      ['Quais são as semelhanças entre os três portos?', ''],
+      ['O que aconteceu nos incêndios do porto de Santos?', ''],
       ['Como é o terminal de águas profundas de Yangshan?', ''],
+      ['Qual porto movimenta mais contêineres?', ''],
       ['incêndios acidentes porto santos terminais', 'q14'],
-      ['Qual é o maior porto do mundo em contêineres?', ''],
-      ['terminal "águas profundas" xangai', 'aspas'],
-      ['Como as mercadorias chegam ao porto de Roterdã por trem?', ''],
     ];
     return `<div class="sugestoes">${ex.map(([q, tag]) => `<button type="button" class="sugestao" data-acao="perguntar" data-q="${esc(q)}">${esc(q)}${tag ? `<small>${tag}</small>` : ''}</button>`).join('')}</div>`;
   }
 
   function boasVindas() {
-    msgIA(`<p class="lead">Olá! Eu sou o <b>Farol</b>, o motor de busca do grupo Enem. Procuro respostas em ${IX.N} trechos da Wikipédia sobre os portos de <b>Santos</b>, <b>Xangai</b> e <b>Roterdã</b>.</p>
-      <p>Não invento respostas: mostro os trechos que encontrei e abro o meu raciocínio, etapa por etapa, com as contas que decidiram a ordem. Experimente:</p>
+    msgIA(`<p class="lead">Olá! Eu sou o <b>Farol</b>, o motor de busca do grupo Enem. Respondo perguntas sobre os portos de <b>Santos</b>, <b>Xangai</b> e <b>Roterdã</b> a partir de ${IX.N} trechos da Wikipédia.</p>
+      <p>Escolha o modelo de busca embaixo, perto da caixa de texto: <b>BM25</b>, <b>LSA</b> ou <b>Híbrido</b>. O motor encontra os trechos, e o Claude escreve a resposta só com eles, citando cada um. Os trechos e as contas do motor ficam logo abaixo da resposta. Experimente:</p>
       ${sugestoesHTML()}`);
   }
 
+  function modeloEscolhido() {
+    const m = document.querySelector('input[name="modelo"]:checked');
+    return m ? m.value : 'bm25';
+  }
+
   function processar(txt) {
-    const c = Object.assign({}, cfg);
+    const c = Object.assign({}, cfg, {
+      modelo: modeloEscolhido(),
+      contexto: parseInt($('#aj-ctx').value, 10) || 8,
+      portos: $('#aj-portos').checked,
+    });
     const t0 = performance.now();
     const r = M.buscar(txt, IX, c);
     const ms = performance.now() - t0;
     const nec = NEC.find((n) => n.chave === chave(r.qt)) || null;
     const rid = 'r' + (++contador);
-    respostas.set(rid, { r, cfg: c, cores: coresDos(r.noVocab), nec, ms, mostrar: 5, abrir: true });
+    respostas.set(rid, { r, cfg: c, ctx: contexto(r, c), cores: coresDos(r.noVocab), nec, ms, mostrarResto: 0, abrir: false, ctl: null });
     return rid;
   }
 
@@ -1173,35 +1493,11 @@ ${esc(idfs)}</div>
     const u = msgUser(txt);
     const rid = processar(txt);
     const st = respostas.get(rid);
-    const passos = [
-      'Preparando a pergunta…',
-      'Consultando o índice invertido…',
-      `Calculando o BM25 nos ${IX.N} trechos…`,
-    ];
-    if (st.r.frases.length) passos.push('Filtrando pela frase exata…');
-    if (st.cfg.rerank_k > 0) passos.push(`Relendo os ${st.cfg.rerank_k} primeiros…`);
-    const ia = msgIA(`<ul class="pensando">${passos.map((p) => `<li>${p}</li>`).join('')}</ul>`);
+    const ia = msgIA(respostaHTML(rid));
     ia.dataset.rid = rid;
-    const corpo = ia.querySelector('.ia-corpo');
-    const nome = ia.querySelector('.ia-nome small');
-    const terminar = () => {
-      nome.textContent = `contas em ${st.ms < 1 ? 'menos de 1' : nf(st.ms, 0)} ms`;
-      corpo.querySelector('.pensando').remove();
-      corpo.insertAdjacentHTML('beforeend', respostaHTML(rid));
-      if (!imediato) ia.scrollIntoView({ behavior: reduzMovimento ? 'auto' : 'smooth', block: 'start' });
-    };
-    if (imediato || reduzMovimento) { terminar(); if (!imediato) u.scrollIntoView({ block: 'start' }); return; }
-    u.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    const itens = ia.querySelectorAll('.pensando li');
-    itens.forEach((li, i) => { if (i > 0) li.hidden = true; });
-    let i = 0;
-    const passo = () => {
-      itens[i].classList.add('feito');
-      i++;
-      if (i < itens.length) { itens[i].hidden = false; setTimeout(passo, 420); }
-      else setTimeout(terminar, 260);
-    };
-    setTimeout(passo, 420);
+    ia.querySelector('.ia-nome small').textContent = `${NOME_MODELO[st.r.modelo]} · busca em ${st.ms < 1 ? 'menos de 1' : nf(st.ms, 0)} ms`;
+    u.scrollIntoView({ behavior: reduzMovimento || imediato ? 'auto' : 'smooth', block: 'start' });
+    if (st.ctx.ids.length) escrever(rid, ia);
   }
 
   // cliques dentro da conversa
@@ -1218,12 +1514,26 @@ ${esc(idfs)}</div>
       perguntar(novo);
     } else if (acao === 'mais' && rid) {
       const st = respostas.get(rid);
-      const de = st.mostrar;
-      st.mostrar += 5;
-      const novos = st.r.rkFinal.slice(de, st.mostrar).map((id, i) => cartao(rid, id, de + i + 1)).join('');
+      const lidos = new Set(st.ctx.ids);
+      const resto = st.r.rkFinal.filter((id) => !lidos.has(id));
+      const de = st.mostrarResto;
+      st.mostrarResto += 5;
+      const novos = resto.slice(de, st.mostrarResto).map((id) => cartao(rid, id, st.r.rkFinal.indexOf(id) + 1)).join('');
       b.insertAdjacentHTML('beforebegin', novos);
-      const resta = st.r.rkFinal.length - st.mostrar;
-      if (resta > 0) b.textContent = `Mostrar mais ${Math.min(5, resta)} ${plural(Math.min(5, resta), 'trecho', 'trechos')}`; else b.remove();
+      const resta = resto.length - st.mostrarResto;
+      if (resta > 0) b.textContent = `Ver mais ${Math.min(5, resta)} do ranking (o Claude não leu)`; else b.remove();
+    } else if (acao === 'cita') {
+      const alvo = document.getElementById(b.dataset.alvo);
+      const art = alvo && alvo.closest('.cartao');
+      if (art) {
+        art.scrollIntoView({ behavior: reduzMovimento ? 'auto' : 'smooth', block: 'center' });
+        art.classList.remove('alvo'); void art.offsetWidth; art.classList.add('alvo');
+        const p = art.querySelector('.trecho.curto');
+        if (p) { p.classList.remove('curto'); const l = art.querySelector('[data-acao="ler"]'); if (l) l.textContent = 'Recolher o trecho'; }
+      }
+    } else if (acao === 'parar' && rid) {
+      const st = respostas.get(rid);
+      if (st.ctl) st.ctl.abort();
     } else if (acao === 'ler') {
       const p = b.closest('.cartao').querySelector('.trecho');
       p.classList.toggle('curto');
@@ -1269,13 +1579,15 @@ ${esc(idfs)}</div>
     if (b) { fecharPainel(); perguntar(b.dataset.q); }
   });
 
-  const aj = { k1: $('#aj-k1'), b: $('#aj-b'), rerank_k: $('#aj-k'), janela: $('#aj-j') };
+  const aj = { lsa_k: $('#aj-lsak'), k1: $('#aj-k1'), b: $('#aj-b'), rerank_k: $('#aj-k'), janela: $('#aj-j') };
   function lerAjustes() {
     cfg.k1 = parseFloat(aj.k1.value); cfg.b = parseFloat(aj.b.value);
     cfg.rerank_k = parseInt(aj.rerank_k.value, 10); cfg.janela = parseInt(aj.janela.value, 10);
+    cfg.lsa_k = parseInt(aj.lsa_k.value, 10);
+    cfg.modelo = modeloEscolhido();
     $('#out-k1').textContent = nf(cfg.k1, 1);
     $('#out-b').textContent = nf(cfg.b, 2);
-    let mudou = false;
+    let mudou = cfg.modelo !== PADRAO.modelo;
     for (const k of Object.keys(aj)) {
       const dif = Math.abs(cfg[k] - PADRAO[k]) > 1e-9;
       aj[k].closest('.ajuste').classList.toggle('ajuste-mudou', dif);
@@ -1283,12 +1595,17 @@ ${esc(idfs)}</div>
     }
     $('#restaurar').disabled = !mudou;
     const [m0, m1] = mapCom(cfg);
+    $('#map-nome').textContent = NOME_MODELO[cfg.modelo];
     $('#map0').textContent = nf(m0, 3);
     $('#map1').textContent = cfg.rerank_k ? nf(m1, 3) : '—';
+    $('#modelo-map').textContent = `MAP no gabarito: ${nf(cfg.rerank_k ? m1 : m0, 3)}${cfg.rerank_k ? ` (com releitura do top-${cfg.rerank_k})` : ''}`;
   }
   Object.values(aj).forEach((el) => el.addEventListener('input', lerAjustes));
+  document.querySelectorAll('input[name="modelo"]').forEach((el) => el.addEventListener('change', lerAjustes));
   $('#restaurar').addEventListener('click', () => {
     aj.k1.value = PADRAO.k1; aj.b.value = PADRAO.b; aj.rerank_k.value = PADRAO.rerank_k; aj.janela.value = PADRAO.janela;
+    aj.lsa_k.value = PADRAO.lsa_k;
+    const m = document.getElementById('mod-' + PADRAO.modelo); if (m) m.checked = true;
     lerAjustes();
   });
   $('#refazer').addEventListener('click', () => { if (ultima) { fecharPainel(); perguntar(ultima); } });
@@ -1318,7 +1635,6 @@ ${esc(idfs)}</div>
   // ---------- estado inicial ----------
   lerAjustes();
   boasVindas();
-  perguntar('Como é o terminal de águas profundas de Yangshan?', true);
   window.scrollTo(0, 0);
 })();
 </script>
