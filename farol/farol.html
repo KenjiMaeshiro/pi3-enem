@@ -1636,6 +1636,9 @@ ${trechos}`;
   lerAjustes();
   boasVindas();
   window.scrollTo(0, 0);
+  // Voltar a esta aba pelo "voltar" do navegador traz a pagina guardada na memoria:
+  // recarrega para comecar do zero, sem as perguntas anteriores.
+  window.addEventListener('pageshow', (e) => { if (e.persisted) window.location.reload(); });
 })();
 </script>
 </body>
