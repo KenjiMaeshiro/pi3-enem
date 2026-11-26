@@ -1,4 +1,4 @@
-# Farol: o motor de busca do grupo Enem
+# Farol: o motor de busca do grupo (PI III)
 
 O Farol é uma página que responde perguntas sobre os portos de **Santos**, **Xangai** e **Roterdã**. Você escolhe o modelo de busca (BM25, LSA ou híbrido), escreve a pergunta, e:
 
