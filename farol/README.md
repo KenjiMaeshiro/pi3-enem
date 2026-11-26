@@ -56,7 +56,7 @@ O motor é uma tradução para JavaScript do `motor08.R` (curso), do `estrutura/
 | LSA (50 dimensões) | 0,944 | 0,899 |
 | Híbrido (RRF) | 0,915 | 0,854 |
 
-Os rankings também batem consulta a consulta (mesmo top-5, mesmos cossenos do LSA até a 4ª casa). Esses números são com "entender erros de digitação" **desligado**.
+Os rankings também batem consulta a consulta: nos 33 rankings (11 consultas × BM25, LSA e híbrido), os 60 trechos saem na mesma ordem no R e no Farol, e a maior diferença de nota é da ordem de 10⁻¹⁴ (arredondamento). O teste está em [`experimentos/aula08_frase_exata/`](../experimentos/aula08_frase_exata/). Esses números são com "entender erros de digitação" **desligado**.
 
 Com ele ligado, o MAP sobe, porque algumas palavras das consultas do gabarito não existem no corpus do jeito que foram escritas (a principal é `acidentes`, que no corpus só aparece como `acidente`; a q14 vai de AP 0,313 para 0,833):
 

@@ -15,5 +15,6 @@ O [Farol](farol/) é a interface do motor: você faz uma pergunta, escolhe o mod
 | [`estrutura/banco-de-dados/`](estrutura/banco-de-dados/) | corpus, necessidades e gabarito (qrels) |
 | [`estrutura/codigos/`](estrutura/codigos/) | `config.R` com as decisões do grupo e os códigos das aulas |
 | [`consolidado/`](consolidado/) | os consolidados de cada aula |
+| [`experimentos/`](experimentos/) | testes extras com os números do corpus (ex.: frase exata da Aula 08) |
 | [`guias/`](guias/) | os guias de estudo das aulas |
 | [`entregas/`](entregas/) | as entregas do projeto |
