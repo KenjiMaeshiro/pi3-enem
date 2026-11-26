@@ -1050,6 +1050,8 @@ table.contas { border-collapse: collapse; width: 100%; font-size: 12.5px; font-v
     ? Promise.resolve(window.claude.use('sample')).catch(() => null)
     : Promise.resolve(null);
   let claudeNegado = false;
+  let claudeDisponivel = null;                      // null: ainda nao se sabe; false: sem Claude nesta janela
+  sampleP.then((s) => { claudeDisponivel = !!s; });
   const DOC = Object.fromEntries(DADOS.corpus.map((d) => [d.id, d]));
   const PORTO = { santos: 'Porto de Santos', xangai: 'Porto de Xangai', roterda: 'Porto de Roterdã' };
   const PORTO_CURTO = { santos: 'Santos', xangai: 'Xangai', roterda: 'Roterdã' };
@@ -1438,6 +1440,8 @@ ${esc(idfs)}</div>
       topo = r.qt.length
         ? `<p class="lead">Não encontrei nenhum trecho ${r.frases.length && r.comEscore.length ? 'com a frase entre aspas' : 'com essas palavras'}. ${r.modelo === 'bm25' ? 'O BM25 só acha o que está escrito igual nos trechos; experimente o LSA, que busca pelo assunto, ou tente outra palavra.' : 'Tente outra palavra.'}</p>`
         : '<p class="lead">Sobrou nada para procurar: todas as palavras eram stopwords.</p>';
+    } else if (claudeDisponivel === false || claudeNegado) {
+      topo = '';                                     // sem Claude nesta janela: so os trechos, sem aviso
     } else {
       topo = `<div class="resposta-ia" id="${rid}-resp">
         <div class="resposta-cab"><b>Resposta</b><span class="tag-modelo">${NOME_MODELO[r.modelo]} · ${st.ctx.ids.length} trechos lidos</span>
@@ -1448,7 +1452,7 @@ ${esc(idfs)}</div>
     const cards = st.ctx.ids.map((id, i) => cartao(rid, id, final.indexOf(id) + 1, i + 1)).join('');
     const resto = final.length - st.ctx.ids.length;
     const mais = resto > 0 ? `<button type="button" class="btn" data-acao="mais" style="justify-self:start">Ver mais ${Math.min(5, resto)} do ranking (o Claude não leu)</button>` : '';
-    const fontes = st.ctx.ids.length ? `<div class="fontes-tit"><h3>Trechos que o Claude leu</h3><span>numerados como nas citações · ${st.ctx.extras.size ? 'na ordem do ranking, mais os incluídos para cobrir os portos' : 'na ordem do ranking final'}</span></div>` : '';
+    const fontes = st.ctx.ids.length ? `<div class="fontes-tit"><h3>${claudeDisponivel === false || claudeNegado ? 'Trechos encontrados' : 'Trechos que o Claude leu'}</h3><span>numerados como nas citações · ${st.ctx.extras.size ? 'na ordem do ranking, mais os incluídos para cobrir os portos' : 'na ordem do ranking final'}</span></div>` : '';
     let etapas = etapaPreparar(r, cores) + etapaIndice(r, cores) + etapaBM25(r, cores, c) + etapaModelo(r, c) + etapaFrase(r) + etapaProx(r, c);
     let num = 0;
     etapas = etapas.replace(/<div class="etapa-num">\d+<\/div>/g, () => `<div class="etapa-num">${++num}</div>`);
@@ -1514,14 +1518,14 @@ ${trechos}`;
     if (!alvo) return;
     const parar = ia.querySelector('[data-acao="parar"]');
     const sample = await sampleP;
-    if (!sample || claudeNegado) {
-      alvo.innerHTML = !window.claude
-        ? '<p class="aviso">Este arquivo está aberto fora do claude.ai, então a resposta escrita não aparece. A busca, os trechos e as contas funcionam normalmente; para a resposta, abra o Farol pelo link do claude.ai.</p>'
-        : claudeNegado
-          ? '<p class="aviso">O acesso ao Claude foi recusado nesta página, então não há resposta escrita. Recarregue a página e, na primeira pergunta, clique em “Permitir o uso do Claude”. Os trechos que o motor encontrou estão logo abaixo.</p>'
-          : '<p class="aviso">O Claude não está disponível nesta janela, então não há resposta escrita. Isso acontece quando o Farol é aberto fora da página do claude.ai, por exemplo pela opção de abrir em nova guia. Abra pelo link <b>claude.ai/artifact/…</b> no navegador, logado na sua conta. Os trechos que o motor encontrou estão logo abaixo.</p>';
-      return;
-    }
+    // Sem Claude nesta janela: tira a caixa da resposta e deixa so os trechos, sem aviso
+    const semResposta = () => {
+      const caixa = ia.querySelector(`#${rid}-resp`);
+      if (caixa) caixa.remove();
+      const tit = ia.querySelector('.fontes-tit h3');
+      if (tit) tit.textContent = 'Trechos encontrados';
+    };
+    if (!sample || claudeNegado) { semResposta(); return; }
     const ctl = new AbortController();
     st.ctl = ctl;
     parar.hidden = false;
@@ -1538,7 +1542,7 @@ ${trechos}`;
       if (code === 'cancelled') alvo.innerHTML = parcial || '<p class="aviso">Resposta interrompida.</p>';
       else if (code === 'not_granted' || code === 'sampling_disabled' || code === 'capability_disabled' || code === 'not_declared') {
         claudeNegado = true;
-        alvo.innerHTML = '<p class="aviso">Sem permissão para usar o Claude nesta visualização, então não há resposta escrita. Os trechos que o motor encontrou estão logo abaixo.</p>';
+        semResposta();
       } else alvo.innerHTML = parcial + `<p class="aviso">${ERRO_CLAUDE[code] || 'A conexão com o Claude falhou. Refaça a pergunta em instantes.'}</p>`;
     } finally {
       parar.hidden = true;

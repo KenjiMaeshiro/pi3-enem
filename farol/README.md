@@ -16,7 +16,7 @@ Há dois jeitos. A diferença é só a resposta escrita.
 |---|---|---|
 | Onde | [Farol dos Portos](https://claude.ai/artifact/7M9FF5afH1bZ7zMs1jrfSn) | baixe o arquivo e abra no navegador |
 | Busca, trechos e contas | sim | sim |
-| Resposta escrita pelo Claude | sim | não (aparece um aviso) |
+| Resposta escrita pelo Claude | sim | não (só os trechos) |
 | O que precisa | conta no claude.ai e acesso ao link | só um navegador (Chrome, Edge, Firefox) |
 
 ### Pelo link (com resposta escrita)
@@ -30,7 +30,7 @@ Há dois jeitos. A diferença é só a resposta escrita.
 
 - Baixe `farol.html` (botão **Download raw file** no GitHub) e dê dois cliques.
 - Não precisa instalar nada nem de servidor. Com internet as fontes carregam; sem internet a página usa as fontes do sistema.
-- Fora do claude.ai a página não tem acesso ao Claude: no lugar da resposta aparece um aviso, e o resto funciona igual.
+- Fora do claude.ai a página não tem acesso ao Claude: a caixa da resposta não aparece, e o resto (trechos, contas e ranking) funciona igual.
 
 ## Como funciona
 
